@@ -1,0 +1,5 @@
+boto3==1.16.36
+prefect==0.14.0
+pydantic==1.7.3
+q==2.6
+docker-compose

@@ -1,0 +1,5 @@
+.idea/
+build/
+dist/
+/ve*/
+*.egg-info/
