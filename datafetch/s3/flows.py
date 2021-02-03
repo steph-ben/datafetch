@@ -95,7 +95,7 @@ def create_flow_download(
         max_concurrent_download: int = 5,
         schedule: str = "",
         download_dir: str = '/tmp/plop',
-        post_processing_function=None):
+        post_flowrun=None):
     """
     Create a prefect flow for downloading GFS
     with some configuration option
@@ -105,7 +105,7 @@ def create_flow_download(
     :param timesteps:
     :param max_concurrent_download:
     :param download_dir:
-    :param post_processing_function:
+    :param post_flowrun:
     :return:
     """
 
@@ -131,8 +131,8 @@ def create_flow_download(
                 task_args={'name': f'timestep_{timestep}_download'}
             )
 
-            if post_processing_function is not None:
-                post_processing_function(fp=fp)
+            if post_flowrun is not None:
+                post_flowrun(parameters={'fp': fp})
 
     # Scheduling on a daily basis, according to the run
     schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])
