@@ -2,7 +2,7 @@
 A set of standard tasks & flows for fetching GFS from AWS S3
 
 Example of usage :
-    >>> from fetchers.s3.flows import flow_download
+    >>> from fetchers.s3.flows import create_flow_download
     >>> flow_download.run()
 
 """
@@ -85,10 +85,6 @@ def download_timestep(timestep_info: dict, download_dir: str) -> Path:
     )
 
 
-@prefect.task
-def post_processing(fp: str):
-    print(f"Do some post-processing on {fp} ... ")
-
 
 #######################################################
 
@@ -98,7 +94,8 @@ def create_flow_download(
         timesteps: list = [3, 6],
         max_concurrent_download: int = 5,
         schedule: str = "",
-        download_dir: str = '/tmp/plop'):
+        download_dir: str = '/tmp/plop',
+        post_processing_function=None):
     """
     Create a prefect flow for downloading GFS
     with some configuration option
@@ -108,6 +105,7 @@ def create_flow_download(
     :param timesteps:
     :param max_concurrent_download:
     :param download_dir:
+    :param post_processing_function:
     :return:
     """
 
@@ -118,8 +116,9 @@ def create_flow_download(
             - download according to config
         """
         param_run = prefect.Parameter("run", default=run)
+        date_day = prefect.Parameter("date_day", default=None)
 
-        daterun_avail = check_run_availability(run=param_run)
+        daterun_avail = check_run_availability(run=param_run, date_day=date_day)
 
         for timestep in timesteps:
             timestep_avail = check_timestep_availability(
@@ -131,6 +130,9 @@ def create_flow_download(
                 download_dir=download_dir,
                 task_args={'name': f'timestep_{timestep}_download'}
             )
+
+            if post_processing_function is not None:
+                post_processing_function(fp=fp)
 
     # Scheduling on a daily basis, according to the run
     schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])

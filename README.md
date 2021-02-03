@@ -13,7 +13,14 @@ Currently available:
 pip install git+https://github.com/steph-ben/datafetch.git
 ```
 
-* Usage
+* Download a full run
+
+```python
+>>> from datafetch.s3.flows import create_flow_download
+>>> flow = create_flow_download()
+>>> flow.run()
+```
+* API usage
 
 ```python
 >>> from datafetch.s3 import NoaaGfsS3
