@@ -69,7 +69,7 @@ def check_timestep_availability(daterun_info: dict, timestep: str):
 
 
 @prefect.task(log_stdout=True)
-def download_timestep(timestep_info: dict, download_dir: str) -> Path:
+def download_timestep(timestep_info: dict, download_dir: str) -> str:
     """
     Download a specific timestep file
 
@@ -79,10 +79,11 @@ def download_timestep(timestep_info: dict, download_dir: str) -> Path:
     """
     print(f"Downloading file {timestep_info} to {download_dir} ...")
     s3api = NoaaGfsS3()
-    return s3api.download(
+    fp = s3api.download(
         object_key=s3api.get_timestep_key(**timestep_info),
         destination_dir=download_dir
     )
+    return str(fp)
 
 
 
