@@ -57,13 +57,16 @@ class S3ApiBucket(pydantic.BaseModel):
         logger.debug(f"{self.bucket_name} : filtering {kwargs} ...")
         return self.bucket.objects.filter(**kwargs)
 
-    def download(self, object_key: str, destination_dir: str, destination_filename: str = None) -> Path:
+    def download(self, object_key: str,
+                 destination_dir: str, destination_filename: str = None,
+                 tmp_extension: str = ".tmp") -> Path:
         """
         Helper for download object from bucket
 
         :param object_key:
         :param destination_dir:
         :param destination_filename:
+        :param tmp_extension:
         :return:
         """
         if destination_filename is None:
@@ -73,7 +76,13 @@ class S3ApiBucket(pydantic.BaseModel):
             fp.parent.mkdir(parents=True)
 
         logger.info(f"{self.bucket_name} : downloading {object_key} to {fp} ...")
-        self.bucket.download_file(object_key, str(fp))
+        fp_tmp = fp
+        if tmp_extension:
+            fp_tmp = fp.parent / f"{fp.name}.tmp"
+        self.bucket.download_file(object_key, str(fp_tmp))
+
+        if tmp_extension:
+            fp_tmp.rename(fp)
         return fp
 
 
