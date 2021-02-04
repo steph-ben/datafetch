@@ -15,6 +15,7 @@ from prefect.engine import signals
 from prefect.executors import LocalDaskExecutor
 from prefect.schedules import Schedule
 from prefect.schedules.clocks import CronClock
+from prefect.tasks.prefect import StartFlowRun
 
 from .core import NoaaGfsS3
 
@@ -96,7 +97,7 @@ def create_flow_download(
         max_concurrent_download: int = 5,
         schedule: str = "",
         download_dir: str = '/tmp/plop',
-        post_flowrun=None):
+        post_flowrun: StartFlowRun = None):
     """
     Create a prefect flow for downloading GFS
     with some configuration option
@@ -133,7 +134,8 @@ def create_flow_download(
             )
 
             if post_flowrun is not None:
-                post_flowrun(parameters={'fp': fp})
+                flowrun = post_flowrun(run_name=f"process_{fp}", parameters={'fp': fp}, idempotency_key=fp)
+                flowrun.set_upstream(fp)
 
     # Scheduling on a daily basis, according to the run
     schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])
