@@ -84,7 +84,7 @@ def download_timestep(timestep_info: dict, download_dir: str) -> str:
         object_key=s3api.get_timestep_key(**timestep_info),
         destination_dir=download_dir
     )
-    return str(fp)
+    return str(fp.absolute())
 
 
 
