@@ -7,7 +7,6 @@ Example of usage :
 
 """
 import datetime
-from pathlib import Path
 
 import prefect
 from prefect import Parameter
@@ -22,7 +21,8 @@ from .core import NoaaGfsS3
 
 @prefect.task(
     log_stdout=True,
-    max_retries=5, retry_delay=datetime.timedelta(minutes=1)
+    retry_delay=datetime.timedelta(minutes=10),     # Wait 10 minutes between each try
+    max_retries=6*5,    # Wait maximum 5 hours
 )
 def check_run_availability(run: Parameter, date_day: Parameter = None):
     """
@@ -35,14 +35,11 @@ def check_run_availability(run: Parameter, date_day: Parameter = None):
     if date_day is None:
         date_day = prefect.context.scheduled_start_time.strftime("%Y%m%d")
 
-    print(f"{date_day} / {run} : Checking run availability ...")
     s3api = NoaaGfsS3()
-    r = s3api.filter(Prefix=s3api.get_daterun_prefix(str(date_day), str(run))).limit(count=1)
-    if len(list(r)) > 0:
-        print(f"{date_day} / {run} : Run is available !")
-        return {'date_day': date_day, 'run': run}
-    else:
+    r = s3api.check_run_availability(date_day, run)
+    if not r:
         raise signals.FAIL(f"Run {date_day} / {run} is not yet available")
+    return r
 
 
 @prefect.task(
@@ -57,20 +54,15 @@ def check_timestep_availability(daterun_info: dict, timestep: str):
     :param timestep:
     :return:
     """
-    print(f"{daterun_info} / {timestep} : Checking timestep availability ...")
     s3api = NoaaGfsS3()
-    r = s3api.filter(Prefix=s3api.get_timestep_key(timestep=timestep, **daterun_info))
-    if len(list(r)) > 0:
-        daterun_info = dict(**daterun_info)
-        daterun_info['timestep'] = timestep
-        print(f"{daterun_info} : Timestep available !")
-        return daterun_info
-    else:
-        raise ValueError(f"Timestep {timestep} not yet available")
+    r = s3api.check_timestep_availability(timestep=timestep, **daterun_info)
+    if not r:
+        raise signals.FAIL(f"Timestep {timestep} not yet available")
+    return r
 
 
 @prefect.task(log_stdout=True)
-def download_timestep(timestep_info: dict, download_dir: str) -> str:
+def download_timestep(timestep_info: dict, download_dir: str) -> dict:
     """
     Download a specific timestep file
 
@@ -80,15 +72,12 @@ def download_timestep(timestep_info: dict, download_dir: str) -> str:
     """
     print(f"Downloading file {timestep_info} to {download_dir} ...")
     s3api = NoaaGfsS3()
-    fp = s3api.download(
-        object_key=s3api.get_timestep_key(**timestep_info),
-        destination_dir=download_dir
-    )
-    return str(fp.absolute())
-
+    r = s3api.download_timestep(download_dir=download_dir, **timestep_info)
+    return r
 
 
 #######################################################
+
 
 def create_flow_download(
         flow_name: str = "aws-gfs-download",
@@ -110,7 +99,6 @@ def create_flow_download(
     :param post_flowrun:
     :return:
     """
-
     with prefect.Flow(name=f"{flow_name}-run{run}") as flow_download:
         """
         A Flow for downloading data from AWS:
@@ -134,8 +122,7 @@ def create_flow_download(
             )
 
             if post_flowrun is not None:
-                flowrun = post_flowrun(run_name=f"process_{fp}", parameters={'fp': fp}, idempotency_key=fp)
-                flowrun.set_upstream(fp)
+                flowrun = post_flowrun(run_name=f"process_{fp}", parameters=fp, idempotency_key=str(fp))
 
     # Scheduling on a daily basis, according to the run
     schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])
