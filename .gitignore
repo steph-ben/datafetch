@@ -3,3 +3,4 @@ build/
 dist/
 /ve*/
 *.egg-info/
+/.docker_passwd

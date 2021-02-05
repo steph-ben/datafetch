@@ -4,8 +4,8 @@ set -e
 docker build . -t stephben/datafetch:latest
 
 # Test
-#docker run -ti stephben/datafetch py.test tests/
+docker run --name datatest --rm -ti stephben/datafetch /bin/bash -c "pip install pytest ; py.test tests/"
 
 # Publish to hub.docker.com
-docker login --username stephben
+cat .docker_passwd | docker login --username stephben --password-stdin
 docker push stephben/datafetch:latest
