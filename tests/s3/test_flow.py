@@ -18,9 +18,6 @@ def test_flow():
 
 
 def test_flow_post_process():
-    #with prefect.Flow(name="post-process") as flow:
-    #    fp = prefect.Parameter(name="fp")
-
     post = StartFlowRun(flow_name="gfs-post-processing", project_name="laptop-gfs-project")
     flow_download = create_flow_download(
         post_flowrun=post

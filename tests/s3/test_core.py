@@ -27,3 +27,14 @@ def test_download():
         destination_dir="/tmp/")
     print(r)
     assert isinstance(r, Path)
+
+
+def test_check_availability():
+    s3api = NoaaGfsS3()
+    r = s3api.check_timestep_availability(
+        date_day=date_day,
+        run=0,
+        timestep="00"
+    )
+    print(r)
+    assert isinstance(r, dict)
