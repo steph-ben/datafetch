@@ -34,7 +34,8 @@ class S3ApiBucket(pydantic.BaseModel):
         :return:
         """
         if self._s3 is None:
-            self._s3 = boto3.resource('s3', config=botocore.client.Config(signature_version=botocore.UNSIGNED))
+            session = boto3.session.Session()
+            self._s3 = session.resource('s3', config=botocore.client.Config(signature_version=botocore.UNSIGNED))
         return self._s3
 
     @property
