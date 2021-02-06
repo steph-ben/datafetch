@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import prefect
+import pydantic
 
 
 def get_prefect_flow_id(flow_name: str):
@@ -43,3 +46,53 @@ def trigger_prefect_flow(flow_name: str, **kwargs):
 
     print(f"A new FlowRun has been triggered")
     print(f"Go check it on http://{server_url}/flow-run/{r}")
+
+
+############################
+
+import peewee
+
+db = peewee.SqliteDatabase(None)
+
+
+class DownloadedFileRecorderMixin(pydantic.BaseModel):
+    """
+    Helper to keep track of downloaded files into a database
+    """
+    db_dir: str = "/tmp/"
+
+    @property
+    def db_path(self):
+        return Path(self.db_dir) / f"{self.__name__}.db"
+
+    def init(self):
+        db.init(database=self.db_path)
+
+    def downdb_check_status(self, key: str):
+        """
+        Check if a Downloadrecord already exists and it's status
+
+        :param key:
+        :return:
+        """
+
+        pass
+
+
+class BaseDbModel(peewee.Model):
+    class Meta:
+        database = db
+
+
+class DownloadRecord(BaseDbModel):
+    key = peewee.CharField(unique=True)
+    filepath = peewee.CharField()
+    size = peewee.FloatField()
+    origin_url = peewee.CharField()
+    date_start = peewee.DateTimeField()
+    date_stop = peewee.DateTimeField()
+    status = peewee.CharField()
+    nb_try = peewee.IntegerField(default=0)
+
+    def download_time(self):
+        return self.date_stop - self.date_start
