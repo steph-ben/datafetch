@@ -11,7 +11,7 @@ import boto3.resources
 import botocore
 import botocore.client
 
-from datafetch.datafetch.utils import DownloadedFileRecorderMixin
+from ..utils import DownloadedFileRecorderMixin
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,8 @@ class S3ApiBucket(pydantic.BaseModel):
 
 
 class S3Nwp(S3ApiBucket, DownloadedFileRecorderMixin, pydantic.BaseModel):
+    use_download_db: bool = False
+
     def get_daterun_prefix(self, date_day: str, run: str) -> str:
         """
         Key prefix for a specific date_day / run
@@ -170,23 +172,32 @@ class S3Nwp(S3ApiBucket, DownloadedFileRecorderMixin, pydantic.BaseModel):
         """
         download_key = self.get_timestep_key(date_day=date_day, run=run, timestep=timestep)
 
-         if self.db.need_download(key=download_key):
-             logger.info(f"{date_day} / {run} / {timestep} : Downloading to {download_dir} ...")
-             try:
-                 fp = self.download(
-                     object_key=download_key,
-                     destination_dir=download_dir
-                 )
-                 self.db.store_success(
-                     key=download_key,
-                     filepath=fp,
-                     size=Path(fp).stat().st_size,
-                     status="OK",
-                 )
-             except Exception as exc:
-                 pass
+        if self.use_download_db:
+            logger.debug(f"{date_day} / {run} / {timestep} : Checking if already downloaded ...")
+            downdb_record, _ = self.db_get_record(key=download_key)
+            if downdb_record.need_download():
+                logger.info(f"{date_day} / {run} / {timestep} : Downloading to {download_dir} ...")
+                try:
+                    downdb_record.set_start()
+                    fp = self.download(
+                        object_key=download_key,
+                        destination_dir=download_dir
+                    )
+                    downdb_record.set_stop(fp)
+                except Exception as exc:
+                    downdb_record.set_failed(error=str(exc))
 
-
+                downdb_record.save()
+            else:
+                logger.info(f"{date_day} / {run} / {timestep} : Already downloaded {downdb_record.fp} ...")
+                fp = Path(downdb_record.filepath)
+        else:
+            # Don't check against database if the download was already done
+            logger.info(f"{date_day} / {run} / {timestep} : Downloading to {download_dir} ...")
+            fp = self.download(
+                object_key=download_key,
+                destination_dir=download_dir
+            )
 
         return {'fp': str(fp.absolute())}
 
