@@ -24,7 +24,8 @@ def test_download():
     s3api = NoaaGfsS3()
     r = s3api.download(
         object_key=s3api.get_timestep_key(date_day, "00", "003"),
-        destination_dir="/tmp/")
+        destination_dir="/tmp/",
+    )
     print(r)
     assert isinstance(r, Path)
 
@@ -38,3 +39,22 @@ def test_check_availability():
     )
     print(r)
     assert isinstance(r, dict)
+
+
+def test_download_with_db(tmp_path):
+    s3api = NoaaGfsS3(use_download_db=True)
+    with s3api:
+        r = s3api.download_timestep(
+            date_day=date_day,
+            run=0,
+            timestep="00",
+            download_dir=str(tmp_path)
+        )
+        assert isinstance(r, dict)
+        r = s3api.download_timestep(
+            date_day=date_day,
+            run=0,
+            timestep="00",
+            download_dir=str(tmp_path)
+        )
+        assert isinstance(r, dict)
