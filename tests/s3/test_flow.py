@@ -1,8 +1,5 @@
 from datetime import timedelta, datetime
-
-import prefect
 from prefect.tasks.prefect import StartFlowRun
-
 from datafetch.s3.flows import create_flow_download
 
 
