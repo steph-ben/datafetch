@@ -1,7 +1,13 @@
+from datetime import timedelta, datetime
 from pathlib import Path
+import logging
 
 import prefect
 import pydantic
+import peewee
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_prefect_flow_id(flow_name: str):
@@ -50,33 +56,8 @@ def trigger_prefect_flow(flow_name: str, **kwargs):
 
 ############################
 
-import peewee
 
 db = peewee.SqliteDatabase(None)
-
-
-class DownloadedFileRecorderMixin(pydantic.BaseModel):
-    """
-    Helper to keep track of downloaded files into a database
-    """
-    db_dir: str = "/tmp/"
-
-    @property
-    def db_path(self):
-        return Path(self.db_dir) / f"{self.__name__}.db"
-
-    def init(self):
-        db.init(database=self.db_path)
-
-    def downdb_check_status(self, key: str):
-        """
-        Check if a Downloadrecord already exists and it's status
-
-        :param key:
-        :return:
-        """
-
-        pass
 
 
 class BaseDbModel(peewee.Model):
@@ -85,14 +66,109 @@ class BaseDbModel(peewee.Model):
 
 
 class DownloadRecord(BaseDbModel):
+    """
+    Represent a download record in the database
+    """
     key = peewee.CharField(unique=True)
-    filepath = peewee.CharField()
-    size = peewee.FloatField()
-    origin_url = peewee.CharField()
-    date_start = peewee.DateTimeField()
-    date_stop = peewee.DateTimeField()
-    status = peewee.CharField()
+    filepath = peewee.CharField(null=True)
+    size = peewee.FloatField(null=True)
+    origin_url = peewee.CharField(null=True)
+    date_start = peewee.DateTimeField(null=True)
+    date_stop = peewee.DateTimeField(null=True)
+    status = peewee.CharField(default="empty", choices=[
+        ("empty", "empty"),
+        ("downloading", "downloading"),
+        ("downloaded", "downloaded"),
+        ("failed", "failed")
+    ])
     nb_try = peewee.IntegerField(default=0)
+    error = peewee.CharField(null=True)
 
-    def download_time(self):
+    def download_time(self) -> timedelta:
+        """
+        Elapsed download time
+        :return:
+        """
         return self.date_stop - self.date_start
+
+    def need_download(self) -> bool:
+        """
+        Check if we need to download this record or not
+
+        :return:
+        """
+        if self.status in ("empty", "failed"):
+            return True
+        else:
+            return False
+
+    def set_start(self):
+        """
+        Set download start
+
+        :return:
+        """
+        self.date_start = datetime.utcnow()
+        self.status = "downloading"
+
+    def set_downloaded(self, fp: Path = None):
+        """
+        Set current record as downloaded
+
+        :return:
+        """
+        if fp:
+            self.filepath = str(fp.absolute())
+            self.size = fp.stat().st_size
+        self.status = "downloaded"
+        self.date_stop = datetime.now()
+
+    def set_failed(self, error: str = None):
+        """
+        Set failed status
+
+        :param error:
+        :return:
+        """
+        self.status = "failed"
+        self.date_stop = datetime.now()
+        if error:
+            self.error = error
+
+
+class DownloadedFileRecorderMixin(pydantic.BaseModel):
+    """
+    Helper to keep track of downloaded files into a database
+    """
+    db_name: str = None
+    db_dir: str = "/tmp/"
+
+    @property
+    def db_path(self) -> Path:
+        """
+        Path of sqlite file
+
+        :return:
+        """
+        if self.db_name is None:
+            self.db_name = self.__class__.__name__
+        return Path(self.db_dir) / f"{self.db_name}.db"
+
+    def __enter__(self):
+        logger.debug(f"Initializing database {self.db_path} ...")
+        print(f"Initializing database {self.db_path} ...")
+        db.init(database=self.db_path)
+        db.connect()
+        db.create_tables([DownloadRecord])
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        db.close()
+
+    def db_get_record(self, key: str) -> DownloadRecord:
+        """
+        Get a DownDb record from key
+
+        :param key:
+        :return:
+        """
+        return DownloadRecord.get_or_create(key=key)
