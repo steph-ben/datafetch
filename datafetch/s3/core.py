@@ -78,13 +78,17 @@ class S3ApiBucket(pydantic.BaseModel):
             destination_filename = object_key
         fp = Path(destination_dir, destination_filename)
         if not fp.parent.exists():
-            fp.parent.mkdir(parents=True)
+            fp.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"{self.bucket_name} : downloading {object_key} to {fp} ...")
         fp_tmp = fp
         if tmp_extension:
             fp_tmp = fp.parent / f"{fp.name}.tmp"
-        self.bucket.download_file(object_key, str(fp_tmp))
+        try:
+            self.bucket.download_file(object_key, str(fp_tmp))
+        except botocore.exceptions.ClientError as exc:
+            logger.error(f"Unable to download {object_key} : {str(exc)}")
+            return None
 
         if tmp_extension:
             fp_tmp.rename(fp)
