@@ -96,6 +96,9 @@ class S3ApiBucket(pydantic.BaseModel):
 
 
 class S3Nwp(S3ApiBucket, pydantic.BaseModel):
+    """
+    Abstract class for fetch Numerical Weather Predication data from S3
+    """
     def get_daterun_prefix(self, date_day: str, run: str) -> str:
         """
         Key prefix for a specific date_day / run
@@ -193,4 +196,3 @@ class NoaaGfsS3(S3Nwp, pydantic.BaseModel):
         run = str(run).zfill(2)
         timestep = str(timestep).zfill(3)
         return f"gfs.{date_day}/{run}/gfs.t{run}z.pgrb2.0p25.f{timestep}"
-
