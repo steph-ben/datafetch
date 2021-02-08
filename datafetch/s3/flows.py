@@ -2,7 +2,8 @@
 A set of standard tasks & flows for fetching GFS from AWS S3
 
 Example of usage :
-    >>> from fetchers.s3.flows import create_flow_download
+    >>> from datafetch.s3.flows import create_flow_download
+    >>> flow_download = create_flow_download()
     >>> flow_download.run()
 
 """
@@ -36,7 +37,7 @@ def check_run_availability(run: Parameter, date_day: Parameter = None):
         date_day = prefect.context.scheduled_start_time.strftime("%Y%m%d")
 
     s3api = NoaaGfsS3()
-    r = s3api.check_run_availability(date_day, run)
+    r = s3api.check_run_availability(date_day, str(run))
     if not r:
         raise signals.FAIL(f"Run {date_day} / {run} is not yet available")
     return r
@@ -81,9 +82,8 @@ def download_timestep(timestep_info: dict, download_dir: str) -> dict:
 def create_flow_download(
         flow_name: str = "aws-gfs-download",
         run: int = 0,
-        timesteps: list = [3, 6],
+        timesteps: list = [],
         max_concurrent_download: int = 5,
-        schedule: str = "",
         download_dir: str = '/tmp/plop',
         post_flowrun: StartFlowRun = None):
     """
@@ -98,6 +98,10 @@ def create_flow_download(
     :param post_flowrun:
     :return:
     """
+    if not timesteps:
+        # Set default
+        timesteps = [3, 6]
+
     with prefect.Flow(name=f"{flow_name}-run{run}") as flow_download:
         """
         A Flow for downloading data from AWS:
@@ -121,7 +125,7 @@ def create_flow_download(
             )
 
             if post_flowrun is not None:
-                flowrun = post_flowrun(run_name=f"process_{fp}", parameters=fp, idempotency_key=str(fp))
+                post_flowrun(run_name=f"process_{fp}", parameters=fp, idempotency_key=str(fp))
 
     # Scheduling on a daily basis, according to the run
     schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])
