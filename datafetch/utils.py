@@ -1,3 +1,6 @@
+"""
+Various utils for datafetch
+"""
 import prefect
 
 
@@ -13,9 +16,7 @@ def get_prefect_flow_id(flow_name: str):
     client = prefect.Client()
     query = client.graphql({
         'query':
-            {'flow(where: {archived: {_eq: false}, name: {_eq: "%s"}})' % flow_name:
-                 ['id', 'name']
-             }
+            {'flow(where: {archived: {_eq: false}, name: {_eq: "%s"}})' % flow_name: ['id', 'name']}
     })
     print(query)
     flow_id = query['data']['flow'][0]['id']

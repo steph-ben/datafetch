@@ -4,6 +4,7 @@ Core functionalities of downloading weather data from public AWS dataset, in par
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 import pydantic
 import boto3
@@ -64,7 +65,7 @@ class S3ApiBucket(pydantic.BaseModel):
 
     def download(self, object_key: str,
                  destination_dir: str, destination_filename: str = None,
-                 tmp_extension: str = ".tmp") -> Path:
+                 tmp_extension: str = ".tmp") -> Union[Path, None]:
         """
         Helper for download object from bucket
 
@@ -122,7 +123,7 @@ class S3Nwp(S3ApiBucket, pydantic.BaseModel):
         """
         raise NotImplementedError
 
-    def check_run_availability(self, date_day: str = None, run: str = 0) -> dict:
+    def check_run_availability(self, date_day: str = None, run: str = 0) -> Union[dict, None]:
         """
         Check if a particular run is available
 
@@ -144,7 +145,7 @@ class S3Nwp(S3ApiBucket, pydantic.BaseModel):
             logger.warning(f"Run {date_day} / {run} is not yet available")
             return None
 
-    def check_timestep_availability(self, date_day: str, run: str, timestep: str) -> dict:
+    def check_timestep_availability(self, date_day: str, run: str, timestep: str) -> Union[dict, None]:
         """
         Check if a particular timestep is available
 
