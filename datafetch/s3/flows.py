@@ -70,7 +70,6 @@ def download_timestep(timestep_info: dict, download_dir: str) -> dict:
     :param download_dir:
     :return:
     """
-    print(f"Downloading file {timestep_info} to {download_dir} ...")
     s3api = NoaaGfsS3()
     r = s3api.download_timestep(download_dir=download_dir, **timestep_info)
     return r
@@ -134,5 +133,8 @@ def create_flow_download(
         scheduler="threads",
         num_workers=max_concurrent_download
     )
+
+    # Setup prefect logging to catch current package logs
+    prefect.utilities.logging._create_logger("datafetch")
 
     return flow_download
