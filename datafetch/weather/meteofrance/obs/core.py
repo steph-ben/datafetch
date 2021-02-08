@@ -4,10 +4,10 @@ Fetch observation data from MeteoFrance public data
 from pathlib import Path
 from typing import Union
 
-from datafetch.tools.http.core import SimpleHTTPFetch
+from datafetch.tools.http.core import SimpleHttpFetch
 
 
-class MeteoFranceObservation(SimpleHTTPFetch):
+class MeteoFranceObservation(SimpleHttpFetch):
     base_url = "https://donneespubliques.meteofrance.fr/donnees_libres/Txt/Synop/synop.2021020812.csv"
 
     def download_synop_for(self, datetime: str, **kwargs) -> Union[Path, None]:
