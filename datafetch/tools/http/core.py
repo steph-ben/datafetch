@@ -25,6 +25,11 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
     """
     base_url: str
 
+    # Use python requests raw bytes when download
+    # It can make it faster when downloading large file. However, it doesn't gunzip and deflate.
+    # cf. https://2.python-requests.org/en/master/user/quickstart/#binary-response-content
+    use_requests_raw: bool = False
+
     def fetch(self, destination_dir: str,
               url_suffix: str = None, destination_filename: str = None,
               **kwargs: str) -> Union[Path, None]:
@@ -63,7 +68,11 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
             # cf. https://stackoverflow.com/a/39217788/554374
             with requests.get(url, stream=True) as r:
                 with destination_fp.open('wb') as fd:
-                    shutil.copyfileobj(r.raw, fd)
+                    if self.use_requests_raw:
+                        shutil.copyfileobj(r.raw, fd)
+                    else:
+                        for chunk in r.iter_content(chunk_size=128):
+                            fd.write(chunk)
         except Exception as exc:
             logger.error(f"Unable to download {url} to {destination_fp}: {str(exc)}")
             return None

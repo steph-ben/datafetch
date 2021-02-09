@@ -19,3 +19,11 @@ def test_simplehttp(tmp_path):
                       destination_dir=str(tmp_path), destination_filename="plop.txt")
     assert r.is_file()
     assert r.name == "plop.txt"
+
+
+def test_simplehttp_raw(tmp_path):
+    for use_raw in True, False:
+        fetcher = SimpleHttpFetch(base_url="http://www.google.com", use_requests_raw=use_raw)
+        assert isinstance(fetcher, SimpleHttpFetch)
+        r = fetcher.fetch(tmp_path)
+        assert r.is_file()
