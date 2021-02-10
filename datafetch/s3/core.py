@@ -186,6 +186,10 @@ class S3Nwp(S3ApiBucket, pydantic.BaseModel):
 class NoaaGfsS3(S3Nwp, pydantic.BaseModel):
     """
     Helper for downloading weather GFS from NOAA
+
+    Reference documentation:
+        - Homepage : https://registry.opendata.aws/noaa-gfs-bdp-pds/
+        - Browse bucket: https://noaa-gfs-bdp-pds.s3.amazonaws.com/index.html
     """
     bucket_name: str = "noaa-gfs-bdp-pds"
 
