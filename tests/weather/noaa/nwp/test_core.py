@@ -1,15 +1,10 @@
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from datafetch.s3 import NoaaGfsS3, S3ApiBucket
+from datafetch.weather.noaa.nwp import NoaaGfsS3
 
 yesterday = datetime.today() - timedelta(days=1)
 date_day = yesterday.strftime("%Y%m%d")
-
-
-def test_generic():
-    s3api = S3ApiBucket(bucket_name="any_bucket")
-    r = s3api.filter(Prefix="plop")
 
 
 def test_filter():
@@ -20,12 +15,11 @@ def test_filter():
     assert isinstance(list(r), list)
 
 
-def test_download():
+def test_download(tmp_path):
     s3api = NoaaGfsS3()
-    r = s3api.download(
+    r = s3api.fetch(
         object_key=s3api.get_timestep_key(date_day, "00", "003"),
-        destination_dir="/tmp/")
-    print(r)
+        destination_dir=str(tmp_path))
     assert isinstance(r, Path)
 
 
@@ -36,5 +30,4 @@ def test_check_availability():
         run=0,
         timestep="00"
     )
-    print(r)
     assert isinstance(r, dict)

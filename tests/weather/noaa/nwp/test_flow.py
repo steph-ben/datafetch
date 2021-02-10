@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 import prefect
 from prefect.tasks.prefect import StartFlowRun
 
-from datafetch.s3.flows import create_flow_download
+from datafetch.weather.noaa.nwp.flows import create_flow_download
 
 
 yesterday = datetime.today() - timedelta(days=1)

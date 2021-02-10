@@ -2,7 +2,7 @@
 A set of standard tasks & flows for fetching GFS from AWS S3
 
 Example of usage :
-    >>> from datafetch.s3.flows import create_flow_download
+    >>> from datafetch.weather.noaa.nwp.flows import create_flow_download
     >>> flow_download = create_flow_download()
     >>> flow_download.run()
 
@@ -82,7 +82,7 @@ def download_timestep(timestep_info: dict, download_dir: str) -> dict:
 def create_flow_download(
         flow_name: str = "aws-gfs-download",
         run: int = 0,
-        timesteps: list = [],
+        timesteps: list = None,
         max_concurrent_download: int = 5,
         download_dir: str = '/tmp/plop',
         post_flowrun: StartFlowRun = None) -> prefect.Flow:

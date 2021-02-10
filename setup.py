@@ -12,7 +12,6 @@ setup(
     url="https://github.com/steph-ben/datafetch",
     packages=[
         'datafetch',
-        'datafetch.s3',
     ],
     install_requires=requirements,
 )
