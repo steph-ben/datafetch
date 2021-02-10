@@ -1,45 +1,59 @@
 """
 Various utils for datafetch
 """
+import sys
 import argparse
+from pathlib import Path
 from typing import List
 
 import prefect
 
 
-def show_prefect_cli_helper(flow_list: List[prefect.Flow]):
+def prefect_cli_helper_parser():
     """
-    Show a reminder of prefect cli commands to register and trigger flows from current file
-
+    Argument Parser for prefect cli helper
     :return:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", help="Project project name", default="<project_name>")
     parser.add_argument("--label", help="Labels", default="<label>")
-    parser.add_argument("--run-locally", help="Labels", default=False)
+    parser.add_argument("--run-locally", help="Run the flow on the current machine, without any server", default=False)
     args = parser.parse_args()
+
+    return args
+
+
+def show_prefect_cli_helper(flow_list: List[prefect.Flow], args = None):
+    """
+    Show a reminder of prefect cli commands to register and trigger flows from current file
+
+    :return:
+    """
+    if args is None:
+        args = prefect_cli_helper_parser()
 
     if args.run_locally:
         for flow in flow_list:
             flow.schedule = None
             flow.run()
 
+    print()
     print("Test your flow locally with:")
-    print(f"   <current command> --run-locally")
+    print(f"    $ {' '.join(sys.argv)} --run-locally")
 
     print()
     print("Create your project with:")
-    print(f"    prefect project create --name {args.project}")
+    print(f"    $ prefect project create --name {args.project}")
 
     print()
     print("Register your flow(s) with:")
     for flow in flow_list:
-        print(f"    prefect register flow --file {__name__} --name {flow.name} --project {args.project} --label {args.label}")
+        print(f"    $ prefect register flow --file {Path(sys.argv[0])} --name {flow.name} --project {args.project} --label {args.label}")
 
     print()
     print("Trigger your flow(s) with:")
     for flow in flow_list:
-        print(f"    prefect run flow --name {flow.name} --project {args.project}")
+        print(f"    $ prefect run flow --name {flow.name} --project {args.project}")
 
 
 def get_prefect_flow_id(flow_name: str):

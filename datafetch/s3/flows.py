@@ -85,7 +85,7 @@ def create_flow_download(
         timesteps: list = [],
         max_concurrent_download: int = 5,
         download_dir: str = '/tmp/plop',
-        post_flowrun: StartFlowRun = None):
+        post_flowrun: StartFlowRun = None) -> prefect.Flow:
     """
     Create a prefect flow for downloading GFS
     with some configuration option
