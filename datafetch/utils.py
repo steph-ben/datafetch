@@ -67,9 +67,13 @@ class FetchWithTemporaryExtensionMixin(AbstractFetcher, pydantic.BaseModel, ABC)
 
         fp_downloaded = super().fetch(destination_fp=str(fp_tmp), **kwargs)
 
-        if self.temporary_extension:
-            logger.debug(f"Renaming {fp_downloaded} to {fp} ...")
-            fp_downloaded.rename(fp)
+        if fp_downloaded is None or (isinstance(fp_downloaded, Path) and not fp_downloaded.exists()):
+            # Something went wrong
+            fp = fp_downloaded
+        else:
+            if self.temporary_extension:
+                logger.debug(f"Renaming {fp_downloaded} to {fp} ...")
+                fp_downloaded.rename(fp)
 
         return fp
 

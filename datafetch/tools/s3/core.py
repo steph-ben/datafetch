@@ -11,11 +11,12 @@ import botocore
 import botocore.client
 import pydantic
 
+from datafetch.utils import FetchWithTemporaryExtensionMixin
 
 logger = logging.getLogger(__name__)
 
 
-class S3ApiBucket(pydantic.BaseModel):
+class S3ApiBucket(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
     """
     An helper task for accessing Amazon WebService Storage buckets:
     - filtering objects
@@ -63,34 +64,37 @@ class S3ApiBucket(pydantic.BaseModel):
         logger.debug(f"{self.bucket_name} : filtering {kwargs} ...")
         return self.bucket.objects.filter(**kwargs)
 
-    def download(self, object_key: str,
-                 destination_dir: str, destination_filename: str = None,
-                 tmp_extension: str = ".tmp") -> Union[Path, None]:
+    def fetch(self, object_key: str, destination_dir: str,
+              destination_filename: str = None, **kwargs) -> Union[Path, None]:
         """
-        Helper for download object from bucket
 
         :param object_key:
         :param destination_dir:
         :param destination_filename:
-        :param tmp_extension:
+        :param kwargs:
         :return:
         """
         if destination_filename is None:
             destination_filename = object_key
-        fp = Path(destination_dir, destination_filename)
-        if not fp.parent.exists():
-            fp.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"{self.bucket_name} : downloading {object_key} to {fp} ...")
-        fp_tmp = fp
-        if tmp_extension:
-            fp_tmp = fp.parent / f"{fp.name}.tmp"
+        return super().fetch(object_key=object_key,
+                             destination_dir=destination_dir, destination_filename=destination_filename,
+                             **kwargs)
+
+    def _fetch(self, object_key: str,
+               destination_fp: str = None, **kwargs) -> Union[Path, None]:
+        """
+        Actually download a S3 bucket resource
+
+        :param object_key:
+        :param destination_fp:
+        :param kwargs:
+        :return:
+        """
         try:
-            self.bucket.download_file(object_key, str(fp_tmp))
-        except botocore.exceptions.ClientError as exc:
-            logger.error(f"Unable to download {object_key} : {str(exc)}")
+            self.bucket.download_file(object_key, str(destination_fp))
+        except Exception as exc:
+            logger.error(f"Unable to fetch {self.bucket_name}/{object_key} to {destination_fp}: {str(exc)}")
             return None
 
-        if tmp_extension:
-            fp_tmp.rename(fp)
-        return fp
+        return destination_fp
