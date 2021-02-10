@@ -48,4 +48,3 @@ def test_download_with_db(tmp_path):
     r.unlink()
     r = fetcher.fetch(destination_dir=str(tmp_path))
     assert not r.is_file()
-)
