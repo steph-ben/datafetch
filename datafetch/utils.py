@@ -1,7 +1,45 @@
 """
 Various utils for datafetch
 """
+import argparse
+from typing import List
+
 import prefect
+
+
+def show_prefect_cli_helper(flow_list: List[prefect.Flow]):
+    """
+    Show a reminder of prefect cli commands to register and trigger flows from current file
+
+    :return:
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", help="Project project name", default="<project_name>")
+    parser.add_argument("--label", help="Labels", default="<label>")
+    parser.add_argument("--run-locally", help="Labels", default=False)
+    args = parser.parse_args()
+
+    if args.run_locally:
+        for flow in flow_list:
+            flow.schedule = None
+            flow.run()
+
+    print("Test your flow locally with:")
+    print(f"   <current command> --run-locally")
+
+    print()
+    print("Create your project with:")
+    print(f"    prefect project create --name {args.project}")
+
+    print()
+    print("Register your flow(s) with:")
+    for flow in flow_list:
+        print(f"    prefect register flow --file {__name__} --name {flow.name} --project {args.project} --label {args.label}")
+
+    print()
+    print("Trigger your flow(s) with:")
+    for flow in flow_list:
+        print(f"    prefect run flow --name {flow.name} --project {args.project}")
 
 
 def get_prefect_flow_id(flow_name: str):
