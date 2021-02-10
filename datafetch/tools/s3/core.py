@@ -97,4 +97,4 @@ class S3ApiBucket(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
             logger.error(f"Unable to fetch {self.bucket_name}/{object_key} to {destination_fp}: {str(exc)}")
             return None
 
-        return destination_fp
+        return Path(destination_fp)

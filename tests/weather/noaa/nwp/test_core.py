@@ -17,7 +17,7 @@ def test_filter():
 
 def test_download(tmp_path):
     s3api = NoaaGfsS3()
-    r = s3api.download(
+    r = s3api.fetch(
         object_key=s3api.get_timestep_key(date_day, "00", "003"),
         destination_dir=str(tmp_path))
     assert isinstance(r, Path)
