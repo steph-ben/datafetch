@@ -14,4 +14,3 @@ def test_meteofrance_obs(tmp_path):
     r = fetcher.fetch(destination_dir=str(tmp_path))
     assert isinstance(r, Path)
     assert r.is_file()
-    raise Exception()
