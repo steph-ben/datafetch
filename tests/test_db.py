@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from datafetch.utils import DownloadedFileRecorderMixin, DownloadRecord
+from datafetch.core import DownloadedFileRecorderMixin
+from datafetch.utils.db import DownloadRecord
 
 
 def test_downdb(tmp_path):

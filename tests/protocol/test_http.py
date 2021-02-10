@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from datafetch.tools.http.core import SimpleHttpFetch
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.protocol.http.core import SimpleHttpFetch
+from datafetch.core import FetchWithTemporaryExtensionMixin
 
 
 def test_simplehttp(tmp_path):
@@ -27,3 +27,22 @@ def test_simplehttp_raw(tmp_path):
         assert isinstance(fetcher, SimpleHttpFetch)
         r = fetcher.fetch(tmp_path)
         assert r.is_file()
+
+
+def test_download_with_db(tmp_path):
+    s3api = SimpleHttpFetch(use_download_db=True)
+    with s3api:
+        r = s3api.download_timestep(
+            date_day=date_day,
+            run=0,
+            timestep="00",
+            download_dir=str(tmp_path)
+        )
+        assert isinstance(r, dict)
+        r = s3api.download_timestep(
+            date_day=date_day,
+            run=0,
+            timestep="00",
+            download_dir=str(tmp_path)
+        )
+        assert isinstance(r, dict)

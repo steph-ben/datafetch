@@ -9,12 +9,15 @@ from typing import Union
 import pydantic
 import requests
 
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
+
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
+class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
+                      DownloadedFileRecorderMixin,
+                      pydantic.BaseModel):
     """
     Simply download an url
 

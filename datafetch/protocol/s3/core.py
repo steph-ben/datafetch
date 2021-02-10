@@ -11,7 +11,7 @@ import botocore
 import botocore.client
 import pydantic
 
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.core import FetchWithTemporaryExtensionMixin
 
 logger = logging.getLogger(__name__)
 

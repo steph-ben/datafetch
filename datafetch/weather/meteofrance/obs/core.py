@@ -7,7 +7,7 @@ from typing import Union
 
 import pydantic
 
-from datafetch.tools.http.core import SimpleHttpFetch
+from datafetch.protocol import SimpleHttpFetch
 
 
 class MeteoFranceObservationFetch(SimpleHttpFetch, pydantic.BaseModel):
