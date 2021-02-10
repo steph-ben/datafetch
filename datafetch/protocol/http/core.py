@@ -35,6 +35,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
 
     def fetch(self, destination_dir: str,
               url_suffix: str = None, destination_filename: str = None,
+              record_key: str = None,
               **kwargs: str) -> Union[Path, None]:
         """
         Download data from remote url
@@ -42,6 +43,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
         :param destination_dir:
         :param url_suffix:
         :param destination_filename:
+        :param record_key:
         :return:
         """
         # Handle optional url suffix
@@ -53,8 +55,19 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
         if destination_filename is None:
             destination_filename = url.split("/")[-1]
 
-        return super().fetch(destination_dir=destination_dir, destination_filename=destination_filename,
-                             url=url, **kwargs)
+        # Default unique object key for storing into db
+        if record_key is None:
+            record_key = url
+
+        return super().fetch(
+            # For FetchWithTemporaryExtensionMixin
+            destination_dir=destination_dir, destination_filename=destination_filename,
+            # For DownloadedFileRecorderMixin
+            record_key=record_key,
+            # For _fetch function below
+            url=url,
+            **kwargs
+        )
 
     def _fetch(self, url: str, destination_fp: str) -> Union[Path, None]:
         """

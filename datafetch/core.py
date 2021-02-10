@@ -74,7 +74,7 @@ class FetchWithTemporaryExtensionMixin(AbstractFetcher, pydantic.BaseModel, ABC)
             fp = fp_downloaded
         else:
             if self.temporary_extension:
-                logger.debug(f"Renaming {fp_downloaded} to {fp} ...")
+                logger.info(f"Renaming {fp_downloaded} to {fp}")
                 fp_downloaded.rename(fp)
 
         return fp
@@ -90,28 +90,35 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
     db_dir: str = "/tmp/"
     _db: peewee.Database = None
 
-    def fetch(self, **kwargs) -> Union[Path, None]:
+    def fetch(self, record_key: str, **kwargs) -> Union[Path, None]:
+        """
+        Record download into a database, identified by a unique `record_key`
+        If a `record_key` already exists, the fetch won't be done again
+
+        :param record_key:
+        :param kwargs:
+        :return:
+        """
         if not self.use_download_db:
             # Don't check anything with db, fetch anyway
             return super().fetch(**kwargs)
 
-        record_key = "FIXME"
+        with self:
+            logger.debug(f"{record_key} Checking if already downloaded ...")
+            downdb_record, _ = self.db_get_record(key=record_key)
+            if downdb_record.need_download():
+                logger.info(f"{record_key} : Need download")
+                try:
+                    downdb_record.set_start()
+                    fp = super().fetch(**kwargs)
+                    downdb_record.set_downloaded(fp)
+                except Exception as exc:
+                    downdb_record.set_failed(error=str(exc))
 
-        logger.debug(f"{record_key} Checking if already downloaded ...")
-        downdb_record, _ = self.db_get_record(key=record_key)
-        if downdb_record.need_download():
-            logger.info(f"{record_key} Need download")
-            try:
-                downdb_record.set_start()
-                fp = super().fetch(**kwargs)
-                downdb_record.set_stop(fp)
-            except Exception as exc:
-                downdb_record.set_failed(error=str(exc))
-
-            downdb_record.save()
-        else:
-            logger.info(f"{record_key} Already downloaded {downdb_record.fp} ...")
-            fp = Path(downdb_record.filepath)
+                downdb_record.save()
+            else:
+                logger.info(f"{record_key} : Already downloaded {downdb_record.filepath} ...")
+                fp = Path(downdb_record.filepath)
 
         return fp
 
