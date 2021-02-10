@@ -21,7 +21,6 @@ from .core import NoaaGfsS3
 
 
 @prefect.task(
-    log_stdout=True,
     retry_delay=datetime.timedelta(minutes=10),     # Wait 10 minutes between each try
     max_retries=6*5,    # Wait maximum 5 hours
 )
@@ -44,8 +43,7 @@ def check_run_availability(run: Parameter, date_day: Parameter = None):
 
 
 @prefect.task(
-    log_stdout=True,
-    max_retries=5, retry_delay=datetime.timedelta(minutes=1)
+    max_retries=5, retry_delay=datetime.timedelta(minutes=5)
 )
 def check_timestep_availability(daterun_info: dict, timestep: str):
     """
@@ -62,7 +60,9 @@ def check_timestep_availability(daterun_info: dict, timestep: str):
     return r
 
 
-@prefect.task(log_stdout=True)
+@prefect.task(
+    max_retries=5, retry_delay=datetime.timedelta(minutes=5)
+)
 def download_timestep(timestep_info: dict, download_dir: str) -> dict:
     """
     Download a specific timestep file
@@ -85,7 +85,7 @@ def create_flow_download(
         timesteps: list = None,
         max_concurrent_download: int = 5,
         download_dir: str = '/tmp/plop',
-        post_flowrun: StartFlowRun = None):
+        post_flowrun: StartFlowRun = None) -> prefect.Flow:
     """
     Create a prefect flow for downloading GFS
     with some configuration option
