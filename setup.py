@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -10,8 +10,6 @@ setup(
     author_email="stephane.benchimol@gmail.com",
     description="Tools for fetching data, and providing ready-to-use [Prefect](https://prefect.io) flows",
     url="https://github.com/steph-ben/datafetch",
-    packages=[
-        'datafetch',
-    ],
+    packages=find_packages(),
     install_requires=requirements,
 )
