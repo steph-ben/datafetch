@@ -33,6 +33,7 @@ def show_prefect_cli_helper(flow_list: List[prefect.Flow], args = None):
         for flow in flow_list:
             flow.schedule = None
             flow.run()
+        return
 
     print()
     print("Test your flow locally with:")
@@ -50,7 +51,11 @@ def show_prefect_cli_helper(flow_list: List[prefect.Flow], args = None):
     print()
     print("Trigger your flow(s) with:")
     for flow in flow_list:
-        print(f"    $ prefect run flow --name {flow.name} --project {args.project}")
+        print(f"    $ prefect run flow --name {flow.name} --project {args.project} -ps <json data> --logs")
+
+    print()
+    print("Register an agent locally:")
+    print(f"prefect agent docker start -f --log-level DEBUG  -l {args.label} --volume /data:/data")
 
 
 def get_prefect_flow_id(flow_name: str):
