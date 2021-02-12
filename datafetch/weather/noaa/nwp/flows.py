@@ -9,6 +9,7 @@ Example of usage :
 """
 import datetime
 
+import pendulum
 import prefect
 from prefect import Parameter
 from prefect.engine import signals
@@ -128,7 +129,8 @@ def create_flow_download(
                 post_flowrun(run_name=f"process_{fp}", parameters=fp, idempotency_key=str(fp))
 
     # Scheduling on a daily basis, according to the run
-    schedule = Schedule(clocks=[CronClock(f"0 {run} * * *")])
+    cron = CronClock(f"0 {run} * * *", start_date=pendulum.now("UTC"))
+    schedule = Schedule(clocks=[cron])
     flow_download.schedule = schedule
 
     # For choosing the right executor,
