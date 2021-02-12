@@ -114,7 +114,7 @@ def create_flow_download(
 
         daterun_avail = check_run_availability(run=param_run, date_day=date_day)
 
-        for timestep in timesteps:
+        for timestep in sorted(timesteps):
             timestep_avail = check_timestep_availability(
                 daterun_info=daterun_avail, timestep=timestep,
                 task_args={'name': f'timestep_{timestep}_check_availability'}
