@@ -34,18 +34,25 @@ def test_check_availability():
 
 
 def test_download_with_db(tmp_path):
-    s3api = NoaaGfsS3(use_download_db=True)
+    s3api = NoaaGfsS3(
+        use_download_db=True, db_dir=str(tmp_path)
+    )
+
+    # Fetch something and ensure db creation
     r = s3api.download_timestep(
-        date_day=date_day,
-        run=0,
-        timestep="00",
+        date_day=date_day, run=0, timestep="00",
         download_dir=str(tmp_path)
     )
+    assert s3api.db_path.is_file()
     assert isinstance(r, dict)
+    fp = Path(r['fp'])
+    assert fp.exists()
+
+    # Delete the file, it should not be there after fetching
+    # since the db entry exists
+    fp.unlink()
     r = s3api.download_timestep(
-        date_day=date_day,
-        run=0,
-        timestep="00",
+        date_day=date_day, run=0, timestep="00",
         download_dir=str(tmp_path)
     )
-    assert isinstance(r, dict)
+    assert not fp.exists()
