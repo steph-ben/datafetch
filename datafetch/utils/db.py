@@ -20,10 +20,13 @@ class DownloadRecord(BaseDbModel):
     filepath = peewee.CharField(null=True)
     size = peewee.FloatField(null=True)
     origin_url = peewee.CharField(null=True)
+    date_queued = peewee.DateTimeField(null=True)
+    queue_id = peewee.CharField(null=True)
     date_start = peewee.DateTimeField(null=True)
     date_stop = peewee.DateTimeField(null=True)
     status = peewee.CharField(default="empty", choices=[
         ("empty", "empty"),
+        ("queued", "queued"),
         ("downloading", "downloading"),
         ("downloaded", "downloaded"),
         ("failed", "failed")
@@ -38,6 +41,17 @@ class DownloadRecord(BaseDbModel):
         """
         return self.date_stop - self.date_start
 
+    def need_queue(self) -> bool:
+        """
+        Check if we need to queue this record or not
+
+        :return:
+        """
+        if self.status in ("empty",):
+            return True
+        else:
+            return False
+
     def need_download(self) -> bool:
         """
         Check if we need to download this record or not
@@ -48,6 +62,17 @@ class DownloadRecord(BaseDbModel):
             return True
         else:
             return False
+
+    def set_queued(self, queue_id: str):
+        """
+        Set status as queued
+
+        :param queue_id:
+        :return:
+        """
+        self.date_queued = datetime.utcnow()
+        self.status = "queued"
+        self.queue_id = queue_id
 
     def set_start(self):
         """
