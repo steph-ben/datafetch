@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime
 from pathlib import Path
 
-from datafetch.weather.ecmwf.core import EcmwfEra5S3
+from datafetch.weather.ecmwf.core import EcmwfEra5S3, EcmwfEra5CDS
 
 
 def test_era5_aws_filter(tmp_path):
@@ -28,3 +28,12 @@ def test_era5_aws_fetch(tmp_path):
         destination_dir=str(tmp_path)
     )
     assert isinstance(r, Path)
+
+
+def test_era5_cds(tmp_path):
+    cds = EcmwfEra5CDS(
+        api_uid="xxxx",
+        api_key="xxxx"
+    )
+    r = cds.fetch()
+    assert False

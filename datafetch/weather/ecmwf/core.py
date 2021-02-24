@@ -6,6 +6,7 @@ from typing import Union
 import pydantic
 
 from datafetch.protocol import S3ApiBucket
+from datafetch.protocol.cds import ClimateDataStoreApi
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +79,42 @@ class EcmwfEra5S3(S3ApiBucket, pydantic.BaseModel):
         month = str(month).zfill(2)
 
         return f"{year}/{month}/data/{parameter_filename}"
+
+
+class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
+    """
+    Download ERA5 reanalysis computed by ECMWF from Climate Data Store (CDS)
+
+    See reference links and documentation on :
+        - https://confluence.ecmwf.int/display/CKB/How+to+download+ERA5
+
+    """
+    retrieve_and_wait_until_complete = False
+
+    def test_fetch(self):
+        r = self.cds.retrieve(
+            'reanalysis-era5-pressure-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'grib',
+                'variable': 'temperature',
+                'pressure_level': '850',
+                'year': '2021',
+                'month': '02',
+                'day': '18',
+                'time': [
+                    '00:00', '06:00', '12:00',
+                    '18:00',
+                ],
+            },
+            target=None
+        )
+        print(f"Request has been made for {r.reply}")
+        self.check_result_status(r)
+
+        import q; q.d()
+
+
+if __name__ == "__main__":
+    cds = EcmwfEra5CDS()
+    cds.test_fetch()
