@@ -11,12 +11,14 @@ import botocore
 import botocore.client
 import pydantic
 
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
 
 logger = logging.getLogger(__name__)
 
 
-class S3ApiBucket(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
+class S3ApiBucket(FetchWithTemporaryExtensionMixin,
+                  DownloadedFileRecorderMixin,
+                  pydantic.BaseModel):
     """
     An helper task for accessing Amazon WebService Storage buckets:
     - filtering objects
@@ -65,21 +67,29 @@ class S3ApiBucket(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
         return self.bucket.objects.filter(**kwargs)
 
     def fetch(self, object_key: str, destination_dir: str,
-              destination_filename: str = None, **kwargs) -> Union[Path, None]:
+              destination_filename: str = None,
+              record_key: str = None,
+              **kwargs) -> Union[Path, None]:
         """
 
         :param object_key:
         :param destination_dir:
         :param destination_filename:
+        :param record_key:
         :param kwargs:
         :return:
         """
         if destination_filename is None:
             destination_filename = object_key
 
-        return super().fetch(object_key=object_key,
-                             destination_dir=destination_dir, destination_filename=destination_filename,
-                             **kwargs)
+        return super().fetch(
+            # For _fetch function below
+            object_key=object_key,
+            # For FetchWithTemporaryExtensionMixin
+            destination_dir=destination_dir, destination_filename=destination_filename,
+            # For DownloadFileRecorderMixin
+            record_key=object_key,
+            **kwargs)
 
     def _fetch(self, object_key: str,
                destination_fp: str = None, **kwargs) -> Union[Path, None]:

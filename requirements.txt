@@ -1,3 +1,5 @@
 boto3==1.16.36
 prefect[github]==0.14.6
 pydantic==1.7.3
+peewee==3.14.0
+cdsapi==0.5.1

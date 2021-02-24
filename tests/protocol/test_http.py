@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from datafetch.tools.http.core import SimpleHttpFetch
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.protocol.http.core import SimpleHttpFetch
+from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
 
 
 def test_simplehttp(tmp_path):
@@ -27,3 +27,24 @@ def test_simplehttp_raw(tmp_path):
         assert isinstance(fetcher, SimpleHttpFetch)
         r = fetcher.fetch(tmp_path)
         assert r.is_file()
+
+
+def test_download_with_db(tmp_path):
+    fetcher = SimpleHttpFetch(
+        base_url="http://www.google.com",
+        use_download_db=True,
+        db_dir=str(tmp_path)
+    )
+    assert isinstance(fetcher, (SimpleHttpFetch, DownloadedFileRecorderMixin))
+
+    # Fetch a file and ensure db creation
+    r = fetcher.fetch(destination_dir=str(tmp_path))
+    assert fetcher.db_path.is_file()
+    assert isinstance(r, Path)
+    assert r.is_file()
+
+    # Delete the file, it should not be there after fetching
+    # since the db entry exists
+    r.unlink()
+    r = fetcher.fetch(destination_dir=str(tmp_path))
+    assert not r.is_file()

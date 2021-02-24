@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from datafetch.tools.http.core import SimpleHttpFetch
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.protocol.http.core import SimpleHttpFetch
+from datafetch.core import FetchWithTemporaryExtensionMixin
 from datafetch.weather.meteofrance.obs.core import MeteoFranceObservationFetch
 
 

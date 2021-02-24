@@ -9,12 +9,15 @@ from typing import Union
 import pydantic
 import requests
 
-from datafetch.utils import FetchWithTemporaryExtensionMixin
+from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
+
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
+class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
+                      DownloadedFileRecorderMixin,
+                      pydantic.BaseModel):
     """
     Simply download an url
 
@@ -23,7 +26,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
         >>> fetcher = SimpleHttpFetch(base_url="http://www.google.com")
         >>> fetcher.fetch(url_suffix="?q=plop", destination_dir="/tmp")
     """
-    base_url: str
+    base_url: str = ""
 
     # Use python requests raw bytes when download
     # It can make it faster when downloading large file. However, it doesn't gunzip and deflate.
@@ -32,6 +35,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
 
     def fetch(self, destination_dir: str,
               url_suffix: str = None, destination_filename: str = None,
+              record_key: str = None,
               **kwargs: str) -> Union[Path, None]:
         """
         Download data from remote url
@@ -39,19 +43,34 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin, pydantic.BaseModel):
         :param destination_dir:
         :param url_suffix:
         :param destination_filename:
+        :param record_key:
         :return:
         """
         # Handle optional url suffix
-        url = self.base_url
-        if url_suffix is not None:
+        if not self.base_url and url_suffix:
+            url = url_suffix
+        elif self.base_url and url_suffix:
             url = f"{self.base_url}/{url_suffix}"
+        else:
+            url = self.base_url
 
         # Default destination filename from url suffix
         if destination_filename is None:
             destination_filename = url.split("/")[-1]
 
-        return super().fetch(destination_dir=destination_dir, destination_filename=destination_filename,
-                             url=url, **kwargs)
+        # Default unique object key for storing into db
+        if record_key is None:
+            record_key = url
+
+        return super().fetch(
+            # For FetchWithTemporaryExtensionMixin
+            destination_dir=destination_dir, destination_filename=destination_filename,
+            # For DownloadedFileRecorderMixin
+            record_key=record_key,
+            # For _fetch function below
+            url=url,
+            **kwargs
+        )
 
     def _fetch(self, url: str, destination_fp: str) -> Union[Path, None]:
         """

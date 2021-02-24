@@ -1,4 +1,4 @@
-from datafetch.tools.s3 import S3ApiBucket
+from datafetch.protocol.s3 import S3ApiBucket
 
 
 def test_s3_generic():

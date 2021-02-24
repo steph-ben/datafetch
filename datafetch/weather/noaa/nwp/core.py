@@ -7,7 +7,7 @@ from typing import Union
 
 import pydantic
 
-from datafetch.tools.s3 import S3ApiBucket
+from datafetch.protocol import S3ApiBucket
 
 
 logger = logging.getLogger(__name__)
