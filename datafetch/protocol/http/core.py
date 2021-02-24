@@ -26,7 +26,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
         >>> fetcher = SimpleHttpFetch(base_url="http://www.google.com")
         >>> fetcher.fetch(url_suffix="?q=plop", destination_dir="/tmp")
     """
-    base_url: str
+    base_url: str = ""
 
     # Use python requests raw bytes when download
     # It can make it faster when downloading large file. However, it doesn't gunzip and deflate.
@@ -47,9 +47,12 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
         :return:
         """
         # Handle optional url suffix
-        url = self.base_url
-        if url_suffix is not None:
+        if not self.base_url and url_suffix:
+            url = url_suffix
+        elif self.base_url and url_suffix:
             url = f"{self.base_url}/{url_suffix}"
+        else:
+            url = self.base_url
 
         # Default destination filename from url suffix
         if destination_filename is None:
