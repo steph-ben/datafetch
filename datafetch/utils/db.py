@@ -21,12 +21,14 @@ class DownloadRecord(BaseDbModel):
     size = peewee.FloatField(null=True)
     origin_url = peewee.CharField(null=True)
     date_queued = peewee.DateTimeField(null=True)
+    date_queued_and_ready = peewee.DateTimeField(null=True)
     queue_id = peewee.CharField(null=True)
     date_start = peewee.DateTimeField(null=True)
     date_stop = peewee.DateTimeField(null=True)
     status = peewee.CharField(default="empty", choices=[
         ("empty", "empty"),
         ("queued", "queued"),
+        ("queued_and_ready", "queued_and_ready"),
         ("downloading", "downloading"),
         ("downloaded", "downloaded"),
         ("failed", "failed")
@@ -58,7 +60,7 @@ class DownloadRecord(BaseDbModel):
 
         :return:
         """
-        if self.status in ("empty", "failed"):
+        if self.status in ("empty", "failed", "queued_and_ready"):
             return True
         else:
             return False
@@ -73,6 +75,25 @@ class DownloadRecord(BaseDbModel):
         self.date_queued = datetime.utcnow()
         self.status = "queued"
         self.queue_id = queue_id
+
+    def set_queued_and_ready(self):
+        """
+        Queuing is over, download is ready
+
+        :return:
+        """
+        self.date_queued_and_ready = datetime.utcnow()
+        self.status = "queued_and_ready"
+
+    def check_queued_and_ready(self):
+        """
+        Check if a queued result is availble for download
+        :return:
+        """
+        if self.status == "queued_and_ready":
+            return True
+        else:
+            return False
 
     def set_start(self):
         """
