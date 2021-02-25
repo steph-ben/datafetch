@@ -121,8 +121,6 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
                 downdb_record.save()
             else:
                 logger.info(f"{record_key} : Already downloaded {downdb_record.filepath} ...")
-                import q;
-                q.d()
                 fp = Path(downdb_record.filepath)
 
 
