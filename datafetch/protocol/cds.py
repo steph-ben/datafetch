@@ -24,9 +24,9 @@ class ClimateDataStoreApi(SimpleHttpFetch,
     """
 
     # For connecting CDS
-    url: str = "https://cds.climate.copernicus.eu/api/v2"
     api_uid: str = None
     api_key: str = None
+    _cds_url: str = "https://cds.climate.copernicus.eu/api/v2"
     _cds_internal_wait_until_complete: bool = False
     _cds: cdsapi.Client = None
 
@@ -63,8 +63,8 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             if self.api_uid is not None and self.api_key is not None:
                 key = f"{self.api_uid}:{self.api_key}"
                 cds_args['key'] = key
-            if self.url:
-                cds_args['url'] = self.url
+            if self._cds_url:
+                cds_args['url'] = self._cds_url
 
             logger.info(f"Logging to CDS {cds_args} ...")
             self._cds = cdsapi.Client(**cds_args)

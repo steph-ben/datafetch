@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union
 
 import pydantic
 
 from datafetch.protocol import S3ApiBucket
+from datafetch.protocol.cds import ClimateDataStoreApi
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +79,91 @@ class EcmwfEra5S3(S3ApiBucket, pydantic.BaseModel):
         month = str(month).zfill(2)
 
         return f"{year}/{month}/data/{parameter_filename}"
+
+
+class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
+    """
+    Download ERA5 reanalysis computed by ECMWF from Climate Data Store (CDS)
+
+    See reference links and documentation on :
+        - https://confluence.ecmwf.int/display/CKB/How+to+download+ERA5
+        - https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels
+
+    """
+    cds_resources_list = [
+        (
+            # Pressure levels
+            'reanalysis-era5-pressure-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'grib',
+                'variable': 'temperature',
+                'pressure_level': '850',
+                'time': [
+                    '00:00', '01:00', '02:00',
+                    '03:00', '04:00', '05:00',
+                    '06:00', '07:00', '08:00',
+                    '09:00', '10:00', '11:00',
+                    '12:00', '13:00', '14:00',
+                    '15:00', '16:00', '17:00',
+                    '18:00', '19:00', '20:00',
+                    '21:00', '22:00', '23:00',
+                ],
+            },
+        ),
+        (
+            'reanalysis-era5-single-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'grib',
+                'variable': 'total_precipitation',
+                'time': [
+                    '00:00', '01:00', '02:00',
+                    '03:00', '04:00', '05:00',
+                    '06:00', '07:00', '08:00',
+                    '09:00', '10:00', '11:00',
+                    '12:00', '13:00', '14:00',
+                    '15:00', '16:00', '17:00',
+                    '18:00', '19:00', '20:00',
+                    '21:00', '22:00', '23:00',
+                ],
+            },
+        )
+    ]
+    # Sync mode while fetching from CDS
+    wait_until_complete: bool = True
+    # Use sqlite db for keeping track of downloads
+    use_download_db = True
+
+    def make_request_queue_for_latest(self, date_day: datetime, destination_dir: str):
+        """
+        Get latest data
+
+        :return:
+        """
+        for resource in self.cds_resources_list:
+            name, param = resource
+            param = self.update_param_with_date(param, date_day=date_day)
+            logger.info(f"Requesting for {name} / {param} ...")
+            r = self.fetch(
+                cds_resource_name=name, cds_resource_param=param,
+                destination_dir=destination_dir
+            )
+            logger.info(r)
+
+    def update_param_with_date(self, param: dict, date_day: datetime = None) -> dict:
+        """
+        Update param with date information
+
+        :param param:
+        :param date_day:
+        :return:
+        """
+        if date_day is None:
+            # By default, update with yesterday's date
+            date_day = datetime.utcnow() - timedelta(days=1)
+        param['year'] = str(date_day.year)
+        param['month'] = str(date_day.month).zfill(2)
+        param['day'] = str(date_day.day).zfill(2)
+
+        return param
