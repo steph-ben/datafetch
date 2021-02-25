@@ -57,7 +57,7 @@ def test_cds_queue(tmp_path):
     assert fp.is_file()
 
     # test_cds_download_by_id
-    cds = ClimateDataStoreApi()
+    cds = ClimateDataStoreApi(db_dir=str(tmp_path))
     fp = cds.download_result_by_id(queue_id=db_record.queue_id, destination_dir=str(tmp_path))
     assert isinstance(fp, Path)
     assert fp.is_file()

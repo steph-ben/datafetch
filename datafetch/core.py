@@ -70,13 +70,14 @@ class FetchWithTemporaryExtensionMixin(AbstractFetcher, pydantic.BaseModel, ABC)
         fp_downloaded = super().fetch(destination_fp=str(fp_tmp), **kwargs)
 
         if fp_downloaded is not None:
-            if isinstance(fp_downloaded, Path) and not fp_downloaded.exists():
-                # Something went wrong
-                fp = fp_downloaded
-            else:
-                if self.temporary_extension:
+            if self.temporary_extension:
+                if fp_downloaded.is_file():
                     logger.info(f"Renaming {fp_downloaded} to {fp}")
                     fp_downloaded.rename(fp)
+                fp_downloaded = fp
+
+            if not fp_downloaded.is_file():
+                logger.warning(f"File {fp_downloaded} was downloaded, but doesn't exists anymore")
         else:
             logger.error(f"File was not downloaded")
 
@@ -122,7 +123,6 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
             else:
                 logger.info(f"{record_key} : Already downloaded {downdb_record.filepath} ...")
                 fp = Path(downdb_record.filepath)
-
 
         return fp
 
