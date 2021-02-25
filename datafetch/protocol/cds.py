@@ -296,6 +296,34 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             logger.debug(downdb_record.__dict__)
             return None
 
+    def download_result_by_id(self, queue_id: str,
+                              destination_dir: str, destination_filename: str = None,
+                              **kwargs):
+        """
+
+        :param destination_dir:
+        :param destination_filename:
+        :param queue_id:
+        :param kwargs:
+        :return:
+        """
+        state, reply = self.check_queue_by_id(queue_id=queue_id)
+        if state == "completed" and 'location' in reply:
+            url = reply['location']
+
+            return super().fetch(
+                # For SimpleHttpFetch
+                url_suffix=url,
+                # For FetchWithTemporaryExtensionMixin
+                destination_dir=destination_dir, destination_filename=destination_filename,
+                # For DownloadedFileRecorderMixin
+                record_key=url,
+                **kwargs
+            )
+        else:
+            logger.error(f"Wrong status : {state} / {reply}")
+            return None
+
     @staticmethod
     def get_queue_id_from_result(result: cdsapi.api.Result) -> Union[str, None]:
         """
