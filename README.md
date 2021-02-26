@@ -16,7 +16,8 @@ Current available protocol :
 Current available weather-related fetchers:
 - `datefetch.weather.noaa.nwp.NoaaGfsS3` for fetching  [NOAA GFS from AWS S3](https://registry.opendata.aws/noaa-gfs-bdp-pds/)
 - `datefetch.weather.meteofrance.obs.MeteoFranceObservationFetch`
-
+- `datafetch.weather.ecmwf.EcmwfEra5CDS`
+- `datafetch.weather.ecmwf.EcmwfEra5S3`
 
 ## Quickstart
 
