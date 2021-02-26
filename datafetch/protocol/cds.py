@@ -1,10 +1,12 @@
 import logging
+import pprint
 import time
 from pathlib import Path
 from typing import Union, Tuple
 
 import pydantic
 import cdsapi
+import urllib3
 from cdsapi.api import Result
 
 from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
@@ -21,17 +23,33 @@ class ClimateDataStoreApi(SimpleHttpFetch,
     See :
         - https://github.com/ecmwf/cdsapi
         - https://github.com/ecmwf/cdsapi/blob/master/examples/example-era5-update.py
+
+        >>> cds = ClimateDataStoreApi(wait_until_complete=True)
+        >>> fp = cds.fetch(
+            cds_resource_name='reanalysis-era5-pressure-levels',
+            cds_resource_param={
+                'product_type': 'reanalysis',
+                'format': 'grib',
+                'variable': 'temperature',
+                'pressure_level': '850',
+                'year': '2021',
+                'month': '02',
+                'day': '18',
+                'time': ['00:00'],
+            },
+            destination_dir='/tmp/'
+        )
+
     """
 
     # For connecting CDS
-    url: str = "https://cds.climate.copernicus.eu/api/v2"
     api_uid: str = None
     api_key: str = None
+    _cds_url: str = "https://cds.climate.copernicus.eu/api/v2"
     _cds_internal_wait_until_complete: bool = False
     _cds: cdsapi.Client = None
 
-    # Do synchrone request or not
-    wait_until_complete: bool = False
+    use_download_db = True
 
     class Config:
         underscore_attrs_are_private = True
@@ -56,6 +74,10 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :return:
         """
         if self._cds is None:
+            # Disable urllib https warning
+            # cf. https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
+            urllib3.disable_warnings()
+
             cds_args = {
                 'verify': 0,
                 'wait_until_complete': self._cds_internal_wait_until_complete
@@ -63,10 +85,10 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             if self.api_uid is not None and self.api_key is not None:
                 key = f"{self.api_uid}:{self.api_key}"
                 cds_args['key'] = key
-            if self.url:
-                cds_args['url'] = self.url
+            if self._cds_url:
+                cds_args['url'] = self._cds_url
 
-            logger.info(f"Logging to CDS {cds_args} ...")
+            logger.debug(f"Logging to CDS {cds_args} ...")
             self._cds = cdsapi.Client(**cds_args)
 
         return self._cds
@@ -74,6 +96,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
     def fetch(self,
               cds_resource_name: str, cds_resource_param: dict,
               destination_dir: str, destination_filename: str = None,
+              wait_until_complete: bool = True,
               **kwargs) -> Union[Path, None]:
         """
         Fetching ...
@@ -85,24 +108,26 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :param kwargs:
         :return:
         """
-        downdb_record, created = self.queue_request_if_needed(cds_resource_name, cds_resource_param)
+        self.submit_to_queue(cds_resource_name, cds_resource_param)
+        self.check_queue(cds_resource_name, cds_resource_param, wait_until_complete=wait_until_complete)
+        self.download_result(cds_resource_name, cds_resource_param, destination_dir=destination_dir, **kwargs)
 
-        if downdb_record.queue_id:
-            state, result = self.check_queue_id_status(downdb_record.queue_id,
-                                                       wait_until_complete=self.wait_until_complete)
-            if state == "completed":
-                url = result['location']
+    def submit_to_queue(
+            self, cds_resource_name: str, cds_resource_param: dict
+    ) -> Union[str, Tuple[DownloadRecord, bool]]:
+        """
+        Submit a request to CDS queue
 
-                return super().fetch(
-                    # For SimpleHttpFetch
-                    url_suffix=url,
-                    # For FetchWithTemporaryExtensionMixin
-                    destination_dir=destination_dir, destination_filename=destination_filename,
-                    # For DownloadedFileRecorderMixin
-                    record_key=downdb_record.key,
-                    **kwargs)
+        :param cds_resource_name:
+        :param cds_resource_param:
+        :return:
+        """
+        if not self.use_download_db:
+            return self._queue_request(cds_resource_name, cds_resource_param)
+        else:
+            return self._queue_request_with_db(cds_resource_name, cds_resource_param)
 
-    def queue_request_if_needed(self, cds_resource_name: str, cds_resource_param: dict) -> Tuple[DownloadRecord, bool]:
+    def _queue_request_with_db(self, cds_resource_name: str, cds_resource_param: dict) -> Tuple[DownloadRecord, bool]:
         """
         Trigger a request on CDS if needed, and record request id in a database
 
@@ -111,7 +136,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :param dict:
         :return:
         """
-        record_key = {'name': cds_resource_name, 'param': cds_resource_param}
+        record_key = self.get_resource_key(cds_resource_name, cds_resource_param)
         with self:
             logger.debug(f"{cds_resource_name} Checking if queuing to CDS is needed ...")
             downdb_record, created = self.db_get_record(key=str(record_key))
@@ -119,7 +144,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 # No request has been made yet
                 try:
                     logger.info(f"{cds_resource_name} : Making request queue to CDS ...")
-                    queue_id = self.queue_request(cds_resource_name, cds_resource_param)
+                    queue_id = self._queue_request(cds_resource_name, cds_resource_param)
 
                     if queue_id:
                         downdb_record.set_queued(queue_id)
@@ -131,11 +156,11 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 except KeyError as exc:
                     logger.error(f"{cds_resource_name} : Queuing request failed : {str(exc)}")
             else:
-                logger.info(f"{cds_resource_name} Request already in queue at CDS ({downdb_record.queue_id})")
+                logger.info(f"{cds_resource_name} Request already exists in our sqlite : {downdb_record})")
 
         return downdb_record, created
 
-    def queue_request(self, cds_resource_name: str, cds_resource_param: dict) -> Union[str, None]:
+    def _queue_request(self, cds_resource_name: str, cds_resource_param: dict) -> Union[str, None]:
         """
         Trigger a request on CDS
 
@@ -150,10 +175,42 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         )
         return self.get_queue_id_from_result(r)
 
-    def check_queue_id_status(self, queue_id: str,
-                              wait_until_complete: bool = False,
-                              sleep_seconds: int = 10,
-                              max_try: int = 6) -> Tuple[str, dict]:
+    def check_queue(self, cds_resource_name: str, cds_resource_param: dict, **kwargs) -> Union[DownloadRecord, None]:
+        """
+        Check a queue status and update db accordingly
+
+        :param cds_resource_name:
+        :param cds_resource_param:
+        :return:
+        """
+        if not self.use_download_db:
+            logger.error(f"Cannot check queue status while not using sqlite database to track requests id")
+            return None
+
+        record_key = self.get_resource_key(cds_resource_name, cds_resource_param)
+        downdb_record, created = self.db_get_record(key=str(record_key))
+        if created:
+            logger.error(f"Cannot find existing request id for {record_key} ...")
+            return None
+
+        state, result = self.check_queue_by_id(downdb_record.queue_id, **kwargs)
+        if state == "completed":
+            downdb_record.origin_url = result['location']
+            if downdb_record.status == "queued":
+                downdb_record.set_queued_and_ready()
+        if state == "failed":
+            downdb_record.set_failed(error=str(result))
+            logger.debug(cds_resource_name)
+            logger.debug(pprint.pformat(cds_resource_param))
+            logger.debug(pprint.pformat(result))
+        downdb_record.save()
+
+        return downdb_record
+
+    def check_queue_by_id(self, queue_id: str,
+                          wait_until_complete: bool = False,
+                          sleep_seconds: int = 10,
+                          max_try: int = 6) -> Tuple[str, dict]:
         """
         Check status for a particular request id
 
@@ -166,8 +223,9 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         r = Result(client=self.cds, reply=None)
         if not wait_until_complete:
             r.update(request_id=queue_id)
-            logger.debug(r.reply)
+            logger.info(f"{queue_id} : {r.reply['state']}")
             return r.reply['state'], r.reply
+
         else:
             nb_try = 0
             while True:
@@ -182,7 +240,8 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 if state in ("queued", "running"):
                     nb_try += 1
                     if nb_try > max_try:
-                        logger.error(f"{queue_id} : Too many attempts checking results ({nb_try} / {max_try}), exiting ...")
+                        logger.error(
+                            f"{queue_id} : Too many attempts checking results ({nb_try} / {max_try}), exiting ...")
                         return state, r.reply
 
                     logger.info(f"{queue_id} : Still in progress : {state} ... (attempt {nb_try} / {max_try})")
@@ -195,7 +254,78 @@ class ClimateDataStoreApi(SimpleHttpFetch,
 
                 raise Exception(f"Unknown API state {state} ...")
 
-    def get_queue_id_from_result(self, result: cdsapi.api.Result) -> Union[str, None]:
+    def download_result(self,
+                        cds_resource_name: str, cds_resource_param: dict,
+                        destination_dir: str, destination_filename: str = None,
+                        **kwargs) -> Union[Path, None]:
+        """
+        Download result locally
+
+        :param cds_resource_name:
+        :param cds_resource_param:
+        :param destination_filename:
+        :param destination_dir:
+        :param kwargs:
+        :return:
+        """
+        if not self.use_download_db:
+            logger.error(f"Cannot check queue status while not using sqlite database to track requests id")
+            raise ReferenceError()
+
+        record_key = self.get_resource_key(cds_resource_name, cds_resource_param)
+        downdb_record, created = self.db_get_record(key=str(record_key))
+        if created:
+            logger.error(f"Cannot find existing request id for {record_key} ...")
+            return None
+
+        if downdb_record.need_download():
+            if downdb_record.check_queued_and_ready():
+                return super().fetch(
+                    # For SimpleHttpFetch
+                    url_suffix=downdb_record.origin_url,
+                    # For FetchWithTemporaryExtensionMixin
+                    destination_dir=destination_dir, destination_filename=destination_filename,
+                    # For DownloadedFileRecorderMixin
+                    record_key=downdb_record.key,
+                    **kwargs)
+            else:
+                logger.error(f"Request is not ready for download {downdb_record}")
+                logger.debug(pprint.pformat(downdb_record.__dict__))
+                return None
+        else:
+            logger.info(f"Request already downloaded {downdb_record}")
+            return None
+
+    def download_result_by_id(self, queue_id: str,
+                              destination_dir: str, destination_filename: str = None,
+                              **kwargs):
+        """
+
+        :param destination_dir:
+        :param destination_filename:
+        :param queue_id:
+        :param kwargs:
+        :return:
+        """
+        state, reply = self.check_queue_by_id(queue_id=queue_id)
+        if state == "completed" and 'location' in reply:
+            url = reply['location']
+
+            return super().fetch(
+                # For SimpleHttpFetch
+                url_suffix=url,
+                # For FetchWithTemporaryExtensionMixin
+                destination_dir=destination_dir, destination_filename=destination_filename,
+                # For DownloadedFileRecorderMixin
+                record_key=url,
+                **kwargs
+            )
+        else:
+            logger.error(f"Wrong status : {state} / {reply}")
+            return None
+
+    @staticmethod
+    def get_queue_id_from_result(result: cdsapi.api.Result) -> Union[str, None]:
         """
         Extract the request id from a Result
 
@@ -210,4 +340,16 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         else:
             return None
 
+    @staticmethod
+    def get_resource_key(cds_resource_name: str, cds_resource_param: dict) -> dict:
+        """
+        Generate a key from the CDS request
 
+        :param cds_resource_name:
+        :param cds_resource_param:
+        :return:
+        """
+        return {
+            'name': cds_resource_name,
+            'param': cds_resource_param
+        }

@@ -69,13 +69,19 @@ class FetchWithTemporaryExtensionMixin(AbstractFetcher, pydantic.BaseModel, ABC)
 
         fp_downloaded = super().fetch(destination_fp=str(fp_tmp), **kwargs)
 
-        if fp_downloaded is None or (isinstance(fp_downloaded, Path) and not fp_downloaded.exists()):
-            # Something went wrong
-            fp = fp_downloaded
-        else:
+        if fp_downloaded is not None:
             if self.temporary_extension:
-                logger.info(f"Renaming {fp_downloaded} to {fp}")
-                fp_downloaded.rename(fp)
+                if fp_downloaded.is_file():
+                    logger.info(f"Renaming {fp_downloaded} to {fp}")
+                    fp_downloaded.rename(fp)
+                fp_downloaded = fp
+
+            if not fp_downloaded.is_file():
+                logger.warning(f"File {fp_downloaded} was downloaded, but doesn't exists anymore")
+                fp = None
+        else:
+            logger.error(f"File was not downloaded")
+            fp = fp_downloaded
 
         return fp
 
@@ -114,6 +120,7 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
                     downdb_record.set_downloaded(fp)
                 except Exception as exc:
                     downdb_record.set_failed(error=str(exc))
+                    logger.error(str(exc), exc_info=exc)
 
                 downdb_record.save()
             else:
@@ -134,8 +141,7 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
         return Path(self.db_dir) / f"{self.db_name}.db"
 
     def __enter__(self):
-        logger.debug(f"Initializing database {self.db_path} ...")
-        print(f"Initializing database {self.db_path} ...")
+        logger.debug(f"Using database {self.db_path} ...")
         db.init(database=self.db_path)
         db.connect()
         db.create_tables([DownloadRecord])
