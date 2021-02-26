@@ -98,8 +98,8 @@ Then you can :
 - Simulate the needed information to download the resources from Donwload data > Show API request, example:
 
 ```python
-'cds_resource_name': 'reanalysis-era5-pressure-levels',
-'cds_resource_param': {
+cds_resource_name = 'reanalysis-era5-pressure-levels'
+cds_resource_param = {
     'product_type': 'reanalysis',
     'format': 'grib',
     'variable': 'temperature',
