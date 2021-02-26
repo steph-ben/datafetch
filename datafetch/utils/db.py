@@ -36,6 +36,14 @@ class DownloadRecord(BaseDbModel):
     nb_try = peewee.IntegerField(default=0)
     error = peewee.CharField(null=True)
 
+    def __repr__(self):
+        r = f"{self.key[:20]} : {self.status}"
+        if self.filepath:
+            r += f"{self.filepath}"
+        if self.date_queued:
+            r += f" // Queued on {self.date_queued}"
+        return r
+
     def download_time(self) -> timedelta:
         """
         Elapsed download time
