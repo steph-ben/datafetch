@@ -16,7 +16,8 @@ Current available protocol :
 Current available weather-related fetchers:
 - `datefetch.weather.noaa.nwp.NoaaGfsS3` for fetching  [NOAA GFS from AWS S3](https://registry.opendata.aws/noaa-gfs-bdp-pds/)
 - `datefetch.weather.meteofrance.obs.MeteoFranceObservationFetch`
-
+- `datafetch.weather.ecmwf.EcmwfEra5CDS`
+- `datafetch.weather.ecmwf.EcmwfEra5S3`
 
 ## Quickstart
 
@@ -90,28 +91,28 @@ The `datafetch.protocol.cds` package enhance `cdsapi` with the following feature
 ### Pre-requisites
 
 In order to access those public data, you must:
-    - Register a free account from https://cds.climate.copernicus.eu/user/register
-    - Configure your user key, as defined here https://github.com/ecmwf/cdsapi#configure
+- Register a free account from https://cds.climate.copernicus.eu/user/register
+- Configure your user key, as defined here https://github.com/ecmwf/cdsapi#configure
 
 Then you can :
-    - Browse all online resources from https://cds.climate.copernicus.eu/cdsapp#!/search?type=dataset
-    - Simulate the needed information to download the resources from Donwload data > Show API request, example:
+- Browse all online resources from https://cds.climate.copernicus.eu/cdsapp#!/search?type=dataset
+- Simulate the needed information to download the resources from Donwload data > Show API request, example:
 
-```
-    'cds_resource_name': 'reanalysis-era5-pressure-levels',
-    'cds_resource_param': {
-        'product_type': 'reanalysis',
-        'format': 'grib',
-        'variable': 'temperature',
-        'pressure_level': '850',
-        'year': '2021',
-        'month': '02',
-        'day': '18',
-        'time': [
-            '00:00', '06:00', '12:00',
-            '18:00',
-        ],
-    }
+```python
+cds_resource_name = 'reanalysis-era5-pressure-levels'
+cds_resource_param = {
+    'product_type': 'reanalysis',
+    'format': 'grib',
+    'variable': 'temperature',
+    'pressure_level': '850',
+    'year': '2021',
+    'month': '02',
+    'day': '18',
+    'time': [
+        '00:00', '06:00', '12:00',
+        '18:00',
+    ],
+}
 ```
 
 ### Usage
@@ -162,8 +163,8 @@ cds_resource_param = {
 
 ```python
 from datafetch.protocol.cds import ClimateDataStoreApi
-
 cds = ClimateDataStoreApi()
+
 db_record, created = cds.submit_to_queue(cds_resource_name, cds_resource_param)
 print(db_record.queue_id)
 ```
@@ -172,10 +173,6 @@ print(db_record.queue_id)
 * Check request status
 
 ```python
-from datafetch.protocol.cds import ClimateDataStoreApi
-
-cds = ClimateDataStoreApi()
-
 # Using initial request data (request id is retrieved from sqlite)
 db_record = cds.check_queue(cds_resource_name, cds_resource_param)
 print(db_record)
@@ -188,10 +185,6 @@ print(state, reply)
 
 * Download result
 ```python
-from datafetch.protocol.cds import ClimateDataStoreApi
-
-cds = ClimateDataStoreApi()
-
 # Using initial request data
 fp = cds.download_result(
     cds_resource_name, cds_resource_param,
