@@ -1,10 +1,12 @@
 import logging
+import pprint
 import time
 from pathlib import Path
 from typing import Union, Tuple
 
 import pydantic
 import cdsapi
+import urllib3
 from cdsapi.api import Result
 
 from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecorderMixin
@@ -72,6 +74,10 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :return:
         """
         if self._cds is None:
+            # Disable urllib https warning
+            # cf. https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
+            urllib3.disable_warnings()
+
             cds_args = {
                 'verify': 0,
                 'wait_until_complete': self._cds_internal_wait_until_complete
@@ -82,7 +88,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             if self._cds_url:
                 cds_args['url'] = self._cds_url
 
-            logger.info(f"Logging to CDS {cds_args} ...")
+            logger.debug(f"Logging to CDS {cds_args} ...")
             self._cds = cdsapi.Client(**cds_args)
 
         return self._cds
@@ -102,22 +108,9 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :param kwargs:
         :return:
         """
-        downdb_record, created = self.queue_request_if_needed(cds_resource_name, cds_resource_param)
-
-        if downdb_record.queue_id:
-            state, result = self.check_queue_id_status(downdb_record.queue_id,
-                                                       wait_until_complete=wait_until_complete)
-            if state == "completed":
-                url = result['location']
-
-                return super().fetch(
-                    # For SimpleHttpFetch
-                    url_suffix=url,
-                    # For FetchWithTemporaryExtensionMixin
-                    destination_dir=destination_dir, destination_filename=destination_filename,
-                    # For DownloadedFileRecorderMixin
-                    record_key=downdb_record.key,
-                    **kwargs)
+        self.submit_to_queue(cds_resource_name, cds_resource_param)
+        self.check_queue(cds_resource_name, cds_resource_param, wait_until_complete=wait_until_complete)
+        self.download_result(cds_resource_name, cds_resource_param, destination_dir=destination_dir, **kwargs)
 
     def submit_to_queue(
             self, cds_resource_name: str, cds_resource_param: dict
@@ -163,7 +156,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 except KeyError as exc:
                     logger.error(f"{cds_resource_name} : Queuing request failed : {str(exc)}")
             else:
-                logger.info(f"{cds_resource_name} Request already in queue at CDS ({downdb_record.queue_id})")
+                logger.info(f"{cds_resource_name} Request already exists in our sqlite : {downdb_record})")
 
         return downdb_record, created
 
@@ -201,12 +194,14 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             return None
 
         state, result = self.check_queue_by_id(downdb_record.queue_id, **kwargs)
-        logger.info(f"{downdb_record.queue_id} : {state}")
         if state == "completed":
             downdb_record.origin_url = result['location']
             downdb_record.set_queued_and_ready()
         if state == "failed":
             downdb_record.set_failed(error=str(result))
+            logger.debug(cds_resource_name)
+            logger.debug(pprint.pformat(cds_resource_param))
+            logger.debug(pprint.pformat(result))
         downdb_record.save()
 
         return downdb_record
