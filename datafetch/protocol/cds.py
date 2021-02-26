@@ -164,8 +164,8 @@ class ClimateDataStoreApi(SimpleHttpFetch,
 
                     if queue_id:
                         downdb_record.set_queued(queue_id)
-                        logger.info(f"Request {queue_id} in queue")
-                        logger.info(f"Saving status in db : {downdb_record}")
+                        logger.info(f"{queue_id} in queue")
+                        logger.info(f"{queue_id} saved into db : {downdb_record}")
                         downdb_record.save()
                     else:
                         logger.error(f"{cds_resource_name} : Queuing request failed")
@@ -251,7 +251,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 state = r.reply['state']
 
                 if state == "completed":
-                    logger.info(f"{queue_id} : Completed")
+                    logger.info(f"{queue_id} Completed")
                     return state, r.reply
 
                 if state in ("queued", "running"):
