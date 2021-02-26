@@ -78,8 +78,10 @@ class FetchWithTemporaryExtensionMixin(AbstractFetcher, pydantic.BaseModel, ABC)
 
             if not fp_downloaded.is_file():
                 logger.warning(f"File {fp_downloaded} was downloaded, but doesn't exists anymore")
+                fp = None
         else:
             logger.error(f"File was not downloaded")
+            fp = fp_downloaded
 
         return fp
 
