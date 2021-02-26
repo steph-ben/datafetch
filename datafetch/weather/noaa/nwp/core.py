@@ -97,7 +97,10 @@ class S3Nwp(S3ApiBucket, pydantic.BaseModel):
             object_key=self.get_timestep_key(date_day=date_day, run=run, timestep=timestep),
             destination_dir=download_dir
         )
-        return {'fp': str(fp.absolute())}
+        if fp:
+            return {'fp': str(fp.absolute())}
+        else:
+            return None
 
 
 class NoaaGfsS3(S3Nwp, pydantic.BaseModel):
