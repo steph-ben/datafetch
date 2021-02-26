@@ -162,8 +162,8 @@ cds_resource_param = {
 
 ```python
 from datafetch.protocol.cds import ClimateDataStoreApi
-
 cds = ClimateDataStoreApi()
+
 db_record, created = cds.submit_to_queue(cds_resource_name, cds_resource_param)
 print(db_record.queue_id)
 ```
@@ -172,10 +172,6 @@ print(db_record.queue_id)
 * Check request status
 
 ```python
-from datafetch.protocol.cds import ClimateDataStoreApi
-
-cds = ClimateDataStoreApi()
-
 # Using initial request data (request id is retrieved from sqlite)
 db_record = cds.check_queue(cds_resource_name, cds_resource_param)
 print(db_record)
@@ -188,10 +184,6 @@ print(state, reply)
 
 * Download result
 ```python
-from datafetch.protocol.cds import ClimateDataStoreApi
-
-cds = ClimateDataStoreApi()
-
 # Using initial request data
 fp = cds.download_result(
     cds_resource_name, cds_resource_param,
