@@ -61,3 +61,22 @@ def test_cds_queue(tmp_path):
     fp = cds.download_result_by_id(queue_id=db_record.queue_id, destination_dir=str(tmp_path))
     assert isinstance(fp, Path)
     assert fp.is_file()
+
+
+def test_cds_force_new(tmp_path):
+    # test_cds_submit
+    cds = ClimateDataStoreApi(db_dir=str(tmp_path))
+    db_record, created = cds.submit_to_queue(**cds_test_resource)
+    assert isinstance(db_record, DownloadRecord)
+    assert isinstance(created, bool)
+    assert db_record.queue_id
+
+    queue_id_1 = db_record.queue_id
+
+    # test_cds_submit
+    cds = ClimateDataStoreApi(db_dir=str(tmp_path))
+    db_record, created = cds.submit_to_queue(**cds_test_resource, force_new=True)
+    assert isinstance(db_record, DownloadRecord)
+    assert isinstance(created, bool)
+    assert db_record.queue_id
+    assert db_record.queue_id != queue_id_1

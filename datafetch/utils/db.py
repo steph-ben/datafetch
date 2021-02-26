@@ -37,7 +37,7 @@ class DownloadRecord(BaseDbModel):
     error = peewee.CharField(null=True)
 
     def __str__(self):
-        r = f"{self.key[:20]} : {self.status}"
+        r = f"<{self.key[:20]}> : {self.status}"
         if self.filepath:
             r += f" // {self.filepath}"
         if self.queue_id:
