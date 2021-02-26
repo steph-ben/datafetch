@@ -38,9 +38,7 @@ def test_era5_cds(tmp_path):
     )
     assert isinstance(cds, EcmwfEra5CDS)
 
-    request_list = cds.make_request_queue_for_latest(
-        date_day=datetime.utcnow() - timedelta(days=1),
-    )
+    request_list = cds.make_request_queue_for_latest()
     request_list = list(request_list)
     assert isinstance(request_list, list)
     assert isinstance(request_list[0][0], DownloadRecord)

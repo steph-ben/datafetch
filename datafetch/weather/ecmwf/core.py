@@ -159,8 +159,8 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
         for resource in self.cds_resources_list:
             name, param = resource
             db_record = self.check_queue(name, param)
-            #fp = self.download_result(name, param, destination_dir=self.destination_dir)
-            #fp_list.append(fp)
+            fp = self.download_result(name, param, destination_dir=self.destination_dir)
+            fp_list.append(fp)
         return fp_list
 
     @staticmethod
@@ -193,6 +193,6 @@ def cli_era5():
 if __name__ == "__main__":
     logging.basicConfig()
     logger = logging.getLogger("datafetch")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     cli_era5()
