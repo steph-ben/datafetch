@@ -113,7 +113,7 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
             logger.debug(f"{record_key} Checking if already downloaded ...")
             downdb_record, _ = self.db_get_record(key=record_key)
             if downdb_record.need_download():
-                logger.info(f"{record_key} : Need download")
+                logger.info(f"{downdb_record} : Need download")
                 try:
                     downdb_record.set_start()
                     fp = super().fetch(**kwargs)
@@ -149,7 +149,8 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         db.close()
 
-    def db_get_record(self, key: str) -> DownloadRecord:
+    @staticmethod
+    def db_get_record(key: str) -> DownloadRecord:
         """
         Get a DownDb record from key
 

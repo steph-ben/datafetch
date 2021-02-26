@@ -37,11 +37,11 @@ class DownloadRecord(BaseDbModel):
     error = peewee.CharField(null=True)
 
     def __str__(self):
-        r = f"{self.key[:20]} : {self.status}"
+        r = f"<{self.key[:20]}> // {self.status}"
+        if self.queue_id:
+            r += f" // id {self.queue_id} on {self.date_queued} "
         if self.filepath:
             r += f" // {self.filepath}"
-        if self.queue_id:
-            r += f" // Queued on {self.date_queued} {self.queue_id}"
         return r
 
     def download_time(self) -> timedelta:

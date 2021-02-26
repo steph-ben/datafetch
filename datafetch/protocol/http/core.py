@@ -81,7 +81,7 @@ class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
         :return:
         """
         destination_fp = Path(destination_fp)
-        logger.info(f"{self.__class__.__name__} : Downloading {url} to {destination_fp} ...")
+        logger.info(f"Downloading {url} to {destination_fp} ...")
 
         try:
             # cf. https://stackoverflow.com/a/39217788/554374

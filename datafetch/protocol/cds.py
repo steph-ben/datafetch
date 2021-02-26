@@ -79,8 +79,12 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             urllib3.disable_warnings()
 
             cds_args = {
+                # Don't check SSL
                 'verify': 0,
-                'wait_until_complete': self._cds_internal_wait_until_complete
+                # Don't automatically wait forever
+                'wait_until_complete': self._cds_internal_wait_until_complete,
+                # Don't automatically delete request when python object is deltroyed
+                'delete': False
             }
             if self.api_uid is not None and self.api_key is not None:
                 key = f"{self.api_uid}:{self.api_key}"
@@ -97,6 +101,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
               cds_resource_name: str, cds_resource_param: dict,
               destination_dir: str, destination_filename: str = None,
               wait_until_complete: bool = True,
+              force_new: bool = False,
               **kwargs) -> Union[Path, None]:
         """
         Fetching ...
@@ -108,26 +113,31 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         :param kwargs:
         :return:
         """
-        self.submit_to_queue(cds_resource_name, cds_resource_param)
+        self.submit_to_queue(cds_resource_name, cds_resource_param, force_new=force_new)
         self.check_queue(cds_resource_name, cds_resource_param, wait_until_complete=wait_until_complete)
         self.download_result(cds_resource_name, cds_resource_param, destination_dir=destination_dir, **kwargs)
 
     def submit_to_queue(
-            self, cds_resource_name: str, cds_resource_param: dict
+            self, cds_resource_name: str, cds_resource_param: dict,
+            force_new: bool = False
     ) -> Union[str, Tuple[DownloadRecord, bool]]:
         """
         Submit a request to CDS queue
 
         :param cds_resource_name:
         :param cds_resource_param:
+        :param force_new:
         :return:
         """
         if not self.use_download_db:
             return self._queue_request(cds_resource_name, cds_resource_param)
         else:
-            return self._queue_request_with_db(cds_resource_name, cds_resource_param)
+            return self._queue_request_with_db(cds_resource_name, cds_resource_param, force_new)
 
-    def _queue_request_with_db(self, cds_resource_name: str, cds_resource_param: dict) -> Tuple[DownloadRecord, bool]:
+    def _queue_request_with_db(self,
+                               cds_resource_name: str, cds_resource_param: dict,
+                               force_new: bool
+                               ) -> Tuple[DownloadRecord, bool]:
         """
         Trigger a request on CDS if needed, and record request id in a database
 
@@ -140,6 +150,12 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         with self:
             logger.debug(f"{cds_resource_name} Checking if queuing to CDS is needed ...")
             downdb_record, created = self.db_get_record(key=str(record_key))
+
+            if not created and force_new:
+                logger.info(f"Cleaning existing record {downdb_record}")
+                downdb_record.delete().execute()
+                downdb_record, created = self.db_get_record(key=str(record_key))
+
             if downdb_record.need_queue():
                 # No request has been made yet
                 try:
@@ -148,7 +164,8 @@ class ClimateDataStoreApi(SimpleHttpFetch,
 
                     if queue_id:
                         downdb_record.set_queued(queue_id)
-                        logger.info(f"{cds_resource_name} : Request in queue ({queue_id}), saving to db ...")
+                        logger.info(f"{queue_id} in queue")
+                        logger.info(f"{queue_id} saved into db : {downdb_record}")
                         downdb_record.save()
                     else:
                         logger.error(f"{cds_resource_name} : Queuing request failed")
@@ -234,7 +251,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                 state = r.reply['state']
 
                 if state == "completed":
-                    logger.debug(f"{queue_id} : Completed")
+                    logger.info(f"{queue_id} Completed")
                     return state, r.reply
 
                 if state in ("queued", "running"):
@@ -280,7 +297,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
 
         if downdb_record.need_download():
             if downdb_record.check_queued_and_ready():
-                return super().fetch(
+                fp = super().fetch(
                     # For SimpleHttpFetch
                     url_suffix=downdb_record.origin_url,
                     # For FetchWithTemporaryExtensionMixin
@@ -288,6 +305,13 @@ class ClimateDataStoreApi(SimpleHttpFetch,
                     # For DownloadedFileRecorderMixin
                     record_key=downdb_record.key,
                     **kwargs)
+
+                logger.info("Cleanup CDS request")
+                r = Result(client=self.cds, reply=None)
+                r.update(request_id=downdb_record.queue_id)
+                r.delete()
+
+                return fp
             else:
                 logger.error(f"Request is not ready for download {downdb_record}")
                 logger.debug(pprint.pformat(downdb_record.__dict__))
