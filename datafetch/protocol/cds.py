@@ -196,7 +196,8 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         state, result = self.check_queue_by_id(downdb_record.queue_id, **kwargs)
         if state == "completed":
             downdb_record.origin_url = result['location']
-            downdb_record.set_queued_and_ready()
+            if downdb_record.status == "queued":
+                downdb_record.set_queued_and_ready()
         if state == "failed":
             downdb_record.set_failed(error=str(result))
             logger.debug(cds_resource_name)
@@ -277,18 +278,22 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             logger.error(f"Cannot find existing request id for {record_key} ...")
             return None
 
-        if downdb_record.check_queued_and_ready():
-            return super().fetch(
-                # For SimpleHttpFetch
-                url_suffix=downdb_record.origin_url,
-                # For FetchWithTemporaryExtensionMixin
-                destination_dir=destination_dir, destination_filename=destination_filename,
-                # For DownloadedFileRecorderMixin
-                record_key=downdb_record.key,
-                **kwargs)
+        if downdb_record.need_download():
+            if downdb_record.check_queued_and_ready():
+                return super().fetch(
+                    # For SimpleHttpFetch
+                    url_suffix=downdb_record.origin_url,
+                    # For FetchWithTemporaryExtensionMixin
+                    destination_dir=destination_dir, destination_filename=destination_filename,
+                    # For DownloadedFileRecorderMixin
+                    record_key=downdb_record.key,
+                    **kwargs)
+            else:
+                logger.error(f"Request is not ready for download {downdb_record}")
+                logger.debug(pprint.pformat(downdb_record.__dict__))
+                return None
         else:
-            logger.error(f"Request is not ready for download {downdb_record.queue_id}")
-            logger.debug(downdb_record.__dict__)
+            logger.info(f"Request already downloaded {downdb_record}")
             return None
 
     def download_result_by_id(self, queue_id: str,
