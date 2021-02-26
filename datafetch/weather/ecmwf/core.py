@@ -1,12 +1,13 @@
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple, List
 
 import pydantic
 
 from datafetch.protocol import S3ApiBucket
 from datafetch.protocol.cds import ClimateDataStoreApi
+from datafetch.utils.db import DownloadRecord
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
         - https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels
 
     """
+    destination_dir: str
     cds_resources_list = [
         (
             # Pressure levels
@@ -135,23 +137,34 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
     # Use sqlite db for keeping track of downloads
     use_download_db = True
 
-    def make_request_queue_for_latest(self, date_day: datetime, destination_dir: str):
+    def make_request_queue_for_latest(self, date_day: datetime = None) -> List[Tuple[DownloadRecord, bool]]:
         """
-        Get latest data
+        :return:
+        """
+        db_list = []
+        for resource in self.cds_resources_list:
+            name, param = resource
+            param = self.update_param_with_date(param, date_day)
+            db_record, created = self.submit_to_queue(name, param)
+            db_list.append((db_record, created))
+        return db_list
+
+    def check_queue_and_download(self) -> List[Path]:
+        """
+        Check status of all requests
 
         :return:
         """
+        fp_list = []
         for resource in self.cds_resources_list:
             name, param = resource
-            param = self.update_param_with_date(param, date_day=date_day)
-            logger.info(f"Requesting for {name} / {param} ...")
-            r = self.fetch(
-                cds_resource_name=name, cds_resource_param=param,
-                destination_dir=destination_dir
-            )
-            logger.info(r)
+            db_record = self.check_queue(name, param)
+            #fp = self.download_result(name, param, destination_dir=self.destination_dir)
+            #fp_list.append(fp)
+        return fp_list
 
-    def update_param_with_date(self, param: dict, date_day: datetime = None) -> dict:
+    @staticmethod
+    def update_param_with_date(param: dict, date_day: datetime = None) -> dict:
         """
         Update param with date information
 
@@ -161,9 +174,25 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
         """
         if date_day is None:
             # By default, update with yesterday's date
-            date_day = datetime.utcnow() - timedelta(days=1)
+            date_day = datetime.utcnow() - timedelta(days=10)
         param['year'] = str(date_day.year)
         param['month'] = str(date_day.month).zfill(2)
         param['day'] = str(date_day.day).zfill(2)
 
         return param
+
+
+def cli_era5():
+    cds = EcmwfEra5CDS(
+        destination_dir="/tmp/"
+    )
+    cds.make_request_queue_for_latest()
+    cds.check_queue_and_download()
+
+
+if __name__ == "__main__":
+    logging.basicConfig()
+    logger = logging.getLogger("datafetch")
+    logger.setLevel(logging.DEBUG)
+
+    cli_era5()
