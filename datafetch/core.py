@@ -118,6 +118,7 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
                     downdb_record.set_downloaded(fp)
                 except Exception as exc:
                     downdb_record.set_failed(error=str(exc))
+                    logger.error(str(exc), exc_info=exc)
 
                 downdb_record.save()
             else:
