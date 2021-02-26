@@ -36,12 +36,12 @@ class DownloadRecord(BaseDbModel):
     nb_try = peewee.IntegerField(default=0)
     error = peewee.CharField(null=True)
 
-    def __repr__(self):
+    def __str__(self):
         r = f"{self.key[:20]} : {self.status}"
         if self.filepath:
-            r += f"{self.filepath}"
-        if self.date_queued:
-            r += f" // Queued on {self.date_queued}"
+            r += f" // {self.filepath}"
+        if self.queue_id:
+            r += f" // Queued on {self.date_queued} {self.queue_id}"
         return r
 
     def download_time(self) -> timedelta:
@@ -95,7 +95,7 @@ class DownloadRecord(BaseDbModel):
 
     def check_queued_and_ready(self):
         """
-        Check if a queued result is availble for download
+        Check if a queued result is available for download
         :return:
         """
         if self.status == "queued_and_ready":
