@@ -138,8 +138,7 @@ class DownloadedFileRecorderMixin(AbstractFetcher, pydantic.BaseModel, ABC):
         return Path(self.db_dir) / f"{self.db_name}.db"
 
     def __enter__(self):
-        logger.debug(f"Initializing database {self.db_path} ...")
-        print(f"Initializing database {self.db_path} ...")
+        logger.debug(f"Using database {self.db_path} ...")
         db.init(database=self.db_path)
         db.connect()
         db.create_tables([DownloadRecord])
