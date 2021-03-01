@@ -179,7 +179,7 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
             date_info = {
                 'year': date_day.year,
                 'month': str(date_info.month).zfill(2),
-                'day': str(date_info.day).zfille(2)
+                'day': str(date_info.day).zfill(2)
             }
         param['year'] = date_info['year']
         param['month'] = date_info['month']
