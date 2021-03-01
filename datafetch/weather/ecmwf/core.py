@@ -137,19 +137,19 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
     # Use sqlite db for keeping track of downloads
     use_download_db = True
 
-    def make_request_queue_for_latest(self, date_day: datetime = None) -> List[Tuple[DownloadRecord, bool]]:
+    def make_request_queue_for_latest(self, date_info: dict = None) -> List[Tuple[DownloadRecord, bool]]:
         """
         :return:
         """
         db_list = []
         for resource in self.cds_resources_list:
             name, param = resource
-            param = self.update_param_with_date(param, date_day)
+            param = self.update_param_with_date(param, date_info)
             db_record, created = self.submit_to_queue(name, param)
             db_list.append((db_record, created))
         return db_list
 
-    def check_queue_and_download(self) -> List[Path]:
+    def check_queue_and_download(self, date_info: dict = None) -> List[Path]:
         """
         Check status of all requests
 
@@ -158,26 +158,32 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
         fp_list = []
         for resource in self.cds_resources_list:
             name, param = resource
-            db_record = self.check_queue(name, param)
+            param = self.update_param_with_date(param, date_info)
+            db_record = self.check_queue(name, param, wait_until_complete=self.wait_until_complete)
             fp = self.download_result(name, param, destination_dir=self.destination_dir)
-            fp_list.append(fp)
+            fp_list.append((fp, param))
         return fp_list
 
     @staticmethod
-    def update_param_with_date(param: dict, date_day: datetime = None) -> dict:
+    def update_param_with_date(param: dict, date_info: dict = None) -> dict:
         """
         Update param with date information
 
         :param param:
-        :param date_day:
+        :param date_info:
         :return:
         """
-        if date_day is None:
+        if date_info is None:
             # By default, update with yesterday's date
             date_day = datetime.utcnow() - timedelta(days=10)
-        param['year'] = str(date_day.year)
-        param['month'] = str(date_day.month).zfill(2)
-        param['day'] = str(date_day.day).zfill(2)
+            date_info = {
+                'year': date_day.year,
+                'month': str(date_day.month).zfill(2),
+                'day': str(date_day.day).zfill(2)
+            }
+        param['year'] = date_info['year']
+        param['month'] = date_info['month']
+        param['day'] = date_info['day']
 
         return param
 

@@ -46,4 +46,5 @@ def test_era5_cds(tmp_path):
     fp_list = cds.check_queue_and_download()
     fp_list = list(fp_list)
     assert isinstance(fp_list, list)
-    assert isinstance(fp_list[0], Path)
+    assert isinstance(fp_list[0], tuple)
+    assert isinstance(fp_list[0][0], Path)

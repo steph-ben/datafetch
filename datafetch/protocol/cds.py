@@ -295,29 +295,32 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             logger.error(f"Cannot find existing request id for {record_key} ...")
             return None
 
-        if downdb_record.need_download():
-            if downdb_record.check_queued_and_ready():
-                fp = super().fetch(
-                    # For SimpleHttpFetch
-                    url_suffix=downdb_record.origin_url,
-                    # For FetchWithTemporaryExtensionMixin
-                    destination_dir=destination_dir, destination_filename=destination_filename,
-                    # For DownloadedFileRecorderMixin
-                    record_key=downdb_record.key,
-                    **kwargs)
+        if downdb_record.status == "queued_and_ready":
+            fp = super().fetch(
+                # For SimpleHttpFetch
+                url_suffix=downdb_record.origin_url,
+                # For FetchWithTemporaryExtensionMixin
+                destination_dir=destination_dir, destination_filename=destination_filename,
+                # For DownloadedFileRecorderMixin
+                record_key=downdb_record.key,
+                **kwargs)
 
+            if fp:
                 logger.info("Cleanup CDS request")
                 r = Result(client=self.cds, reply=None)
                 r.update(request_id=downdb_record.queue_id)
                 r.delete()
 
-                return fp
-            else:
-                logger.error(f"Request is not ready for download {downdb_record}")
-                logger.debug(pprint.pformat(downdb_record.__dict__))
-                return None
-        else:
+            return fp
+        elif downdb_record.status == "downloaded":
             logger.info(f"Request already downloaded {downdb_record}")
+            return downdb_record.filepath
+        elif downdb_record.status == "queued":
+            logger.error(f"Request is not yet ready for download {downdb_record}")
+            logger.debug(pprint.pformat(downdb_record.__dict__))
+            return None
+        else:
+            logger.error(f"Unexpected status {downdb_record}")
             return None
 
     def download_result_by_id(self, queue_id: str,
