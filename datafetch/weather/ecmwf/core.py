@@ -161,7 +161,7 @@ class EcmwfEra5CDS(ClimateDataStoreApi, pydantic.BaseModel):
             param = self.update_param_with_date(param, date_info)
             db_record = self.check_queue(name, param, wait_until_complete=self.wait_until_complete)
             fp = self.download_result(name, param, destination_dir=self.destination_dir)
-            fp_list.append(fp)
+            fp_list.append((fp, param))
         return fp_list
 
     @staticmethod
