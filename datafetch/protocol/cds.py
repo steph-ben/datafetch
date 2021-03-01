@@ -296,26 +296,26 @@ class ClimateDataStoreApi(SimpleHttpFetch,
             return None
 
         if downdb_record.need_download():
-            if downdb_record.check_queued_and_ready():
-                fp = super().fetch(
-                    # For SimpleHttpFetch
-                    url_suffix=downdb_record.origin_url,
-                    # For FetchWithTemporaryExtensionMixin
-                    destination_dir=destination_dir, destination_filename=destination_filename,
-                    # For DownloadedFileRecorderMixin
-                    record_key=downdb_record.key,
-                    **kwargs)
+            fp = super().fetch(
+                # For SimpleHttpFetch
+                url_suffix=downdb_record.origin_url,
+                # For FetchWithTemporaryExtensionMixin
+                destination_dir=destination_dir, destination_filename=destination_filename,
+                # For DownloadedFileRecorderMixin
+                record_key=downdb_record.key,
+                **kwargs)
 
+            if fp:
                 logger.info("Cleanup CDS request")
                 r = Result(client=self.cds, reply=None)
                 r.update(request_id=downdb_record.queue_id)
                 r.delete()
 
-                return fp
-            else:
-                logger.error(f"Request is not ready for download {downdb_record}")
-                logger.debug(pprint.pformat(downdb_record.__dict__))
-                return None
+            return fp
+        elif not downdb_record.check_queued_and_ready():
+            logger.error(f"Request is not ready for download {downdb_record}")
+            logger.debug(pprint.pformat(downdb_record.__dict__))
+            return None
         else:
             logger.info(f"Request already downloaded {downdb_record}")
             return None
