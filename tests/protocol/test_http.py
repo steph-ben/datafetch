@@ -42,6 +42,7 @@ def test_download_with_db(tmp_path):
     assert fetcher.db_path.is_file()
     assert isinstance(r, Path)
     assert r.is_file()
+    assert fetcher.temporary_extension not in str(r)
 
     # Delete the file, it should not be there after fetching
     # since the db entry exists
