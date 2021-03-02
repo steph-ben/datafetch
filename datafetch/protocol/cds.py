@@ -115,7 +115,7 @@ class ClimateDataStoreApi(SimpleHttpFetch,
         """
         self.submit_to_queue(cds_resource_name, cds_resource_param, force_new=force_new)
         self.check_queue(cds_resource_name, cds_resource_param, wait_until_complete=wait_until_complete)
-        self.download_result(cds_resource_name, cds_resource_param, destination_dir=destination_dir, **kwargs)
+        return self.download_result(cds_resource_name, cds_resource_param, destination_dir=destination_dir, **kwargs)
 
     def submit_to_queue(
             self, cds_resource_name: str, cds_resource_param: dict,
