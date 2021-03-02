@@ -10,7 +10,7 @@ requirements = (basedir / "requirements.txt").read_text()
 
 setup(
     name="datafetch",
-    version="0.0.1",
+    version="0.0.2",
     author="steph-ben",
     author_email="stephane.benchimol@gmail.com",
     description="Tools for fetching data, and providing ready-to-use https://prefect.io flows",
