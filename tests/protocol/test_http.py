@@ -48,5 +48,5 @@ def test_download_with_db(tmp_path):
     # since the db entry exists
     r.unlink()
     r = fetcher.fetch(destination_dir=str(tmp_path))
-    assert r is Path
+    assert isinstance(r, Path)
     assert not r.exists()
