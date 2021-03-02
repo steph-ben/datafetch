@@ -15,8 +15,8 @@ from datafetch.core import FetchWithTemporaryExtensionMixin, DownloadedFileRecor
 logger = logging.getLogger(__name__)
 
 
-class SimpleHttpFetch(FetchWithTemporaryExtensionMixin,
-                      DownloadedFileRecorderMixin,
+class SimpleHttpFetch(DownloadedFileRecorderMixin,
+                      FetchWithTemporaryExtensionMixin,
                       pydantic.BaseModel):
     """
     Simply download an url
